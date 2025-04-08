@@ -1,38 +1,130 @@
 # Nextcloud on Flatcar Container Linux
 
-This repository contains a Butane configuration to deploy Nextcloud and MariaDB on Flatcar Container Linux. The configuration sets up:
+This repository contains Butane configurations to deploy Nextcloud and MariaDB on Flatcar Container Linux. The configuration sets up:
 
-1. A dedicated partition for Nextcloud data
+1. A data storage location for Nextcloud data
 2. Secure environment configuration for credentials
 3. Systemd units for running MariaDB and Nextcloud containers
 
-## Butane Configuration
+## Configuration Options
 
-The Butane configuration is available in the `nextcloud.bu` file in this repository. This configuration file:
+This repository provides three different Butane configuration files to accommodate different deployment scenarios:
 
-- Creates a secure environment file with credentials
-- Sets up filesystem mounting for a dedicated Nextcloud data partition
-- Configures systemd units for MariaDB and Nextcloud containers
-- Ensures proper dependency ordering between services
+### 1. Simple Configuration (`nextcloud-simple.yaml`)
+
+The simplest setup that uses directories on the root filesystem. Best for:
+- Testing environments
+- Systems with limited disk options
+- Quick deployments where data persistence isn't critical
+
+**Features:**
+- Uses a directory on the root filesystem for data
+- No additional disk partitioning required
+- Easiest to set up and use
+
+### 2. Dedicated Partition (`nextcloud-dedicated.yaml`)
+
+Uses a dedicated labeled partition for data storage. Best for:
+- Production environments
+- Systems with multiple disks
+- Deployments where data persistence is important
+
+**Features:**
+- Stores all data on a separate partition labeled `NC_DATA`
+- Better isolation between OS and data
+- Easier backup and recovery options
+
+### 3. Cloud-Optimized (`nextcloud-cloud.yaml`)
+
+Automatically detects and configures additional disks in cloud environments. Best for:
+- Deployments in AWS, GCP, Azure, or other cloud providers
+- Systems where disk configuration happens after boot
+
+**Features:** 
+- Auto-detects additional attached disks
+- Automatically formats and mounts disks as needed
+- Falls back to root filesystem if no additional disk is found
+- Works well with cloud-provider volume attachments
+
+## Architecture Overview
+
+```mermaid
+graph TD
+    subgraph "Flatcar Container Linux Host"
+        docker["Docker Service"]
+        ncdata["Data Storage\n/var/lib/nextcloud_data"]
+        envfile["/etc/nextcloud.env\nCredentials File"]
+        
+        subgraph "Docker Containers"
+            maria["MariaDB Container\nmariadb:10.7"]
+            nextcloud["Nextcloud Container\nnextcloud:latest"]
+        end
+        
+        subgraph "Persistent Storage"
+            db["/var/lib/nextcloud_data/db"]
+            config["/var/lib/nextcloud_data/config"]
+            data["/var/lib/nextcloud_data/data"]
+        end
+        
+        systemd["Systemd Services"]
+    end
+    
+    user["User Browser"]
+    
+    systemd -->|manages| docker
+    systemd -->|manages| ncdata
+    systemd -->|starts| maria
+    systemd -->|starts after MariaDB| nextcloud
+    
+    docker -->|runs| maria
+    docker -->|runs| nextcloud
+    
+    maria -->|stores data in| db
+    nextcloud -->|reads/writes| config
+    nextcloud -->|reads/writes| data
+    nextcloud -->|connects to| maria
+    
+    envfile -->|provides credentials to| maria
+    envfile -->|provides credentials to| nextcloud
+    
+    user -->|HTTP/HTTPS| nextcloud
+    
+    classDef container fill:#b3e0ff,stroke:#0066cc,stroke-width:2px;
+    classDef storage fill:#ffcc99,stroke:#ff8000,stroke-width:2px;
+    classDef config fill:#d9f2d9,stroke:#5cd65c,stroke-width:2px;
+    classDef system fill:#f2d9e6,stroke:#d147a3,stroke-width:2px;
+    classDef external fill:#ffffff,stroke:#666666,stroke-width:2px,stroke-dasharray: 5 5;
+    
+    class maria,nextcloud container;
+    class db,config,data storage;
+    class envfile config;
+    class docker,systemd,ncdata system;
+    class user external;
+```
 
 ## Usage Instructions
 
-### 1. Prepare a Disk Partition
+### 1. Choose your Configuration
 
-Before booting your Flatcar instance, ensure you have a dedicated partition for Nextcloud data. This partition should be labeled as `NC_DATA`.
+Select the appropriate configuration file based on your needs:
 
-If you're using a cloud provider, you'll need to:
-1. Create a separate disk volume
-2. Attach it to your instance
-3. Format and label it with:
-   ```
-   sudo mkfs.ext4 -L NC_DATA /dev/sdX
-   ```
-   where `/dev/sdX` is the device name of your additional volume.
+- `nextcloud-simple.yaml`: Simplest setup using the root filesystem
+- `nextcloud-dedicated.yaml`: Using a dedicated partition
+- `nextcloud-cloud.yaml`: Auto-detecting disks in cloud environments
 
-### 2. Convert Butane to Ignition
+### 2. Prepare Storage (for dedicated partition only)
 
-Ignition is the configuration system used by Flatcar Container Linux. Convert the Butane YAML to Ignition JSON:
+If using the dedicated partition configuration, ensure you have a partition labeled as `NC_DATA`:
+
+```
+sudo mkfs.ext4 -L NC_DATA /dev/sdX
+```
+
+where `/dev/sdX` is the device name of your additional volume.
+
+### 3. Convert Butane to Ignition
+
+Ignition is the configuration system used by Flatcar Container Linux. Convert your chosen Butane YAML to Ignition JSON:
 
 1. Install the Butane tool:
    ```
@@ -41,12 +133,12 @@ Ignition is the configuration system used by Flatcar Container Linux. Convert th
    chmod +x butane
    ```
 
-2. Convert the configuration:
+2. Convert the configuration (replace with your chosen config file):
    ```
-   ./butane --pretty --strict nextcloud.bu > nextcloud.ign
+   ./butane --pretty --strict nextcloud-simple.yaml > nextcloud.ign
    ```
 
-### 3. Boot Flatcar with Ignition Config
+### 4. Boot Flatcar with Ignition Config
 
 #### For Local/Physical Hardware
 
@@ -65,7 +157,7 @@ For cloud environments (AWS, GCP, Azure, etc.), consult the provider-specific do
 - **AWS**: Use user-data to pass the Ignition JSON
 - **GCP**: Use custom metadata to provide the Ignition config
 
-### 4. Access Nextcloud
+### 5. Access Nextcloud
 
 Once your system is up and running:
 
