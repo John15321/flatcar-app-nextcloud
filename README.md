@@ -35,52 +35,36 @@ A comprehensive, production-ready Nextcloud deployment on Flatcar Container Linu
 └───────────────────────────────────────────────────────────────┘
 ```
 
+### 🔧 Technical Implementation
+
+This project leverages **Flatcar Container Linux** features:
+
+- **Docker Compose Binary**: Flatcar doesn't include Docker Compose by default. We automatically download the latest Docker Compose binary to `/opt/bin/` during first boot, making it available system-wide.
+- **Immutable OS**: The base system is read-only, ensuring consistency and security.
+- **Butane Configuration**: Human-readable YAML that compiles to Ignition JSON for system provisioning.
+- **Systemd Integration**: All services managed through systemd units for reliable startup and dependency handling.
+
+The setup automatically downloads the latest Docker Compose binary from the official Docker releases and installs it to `/opt/bin/docker-compose`.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - **Flatcar Container Linux** - Immutable, container-optimized OS
-- **Butane** - For converting YAML to Ignition format
+- **Butane** - For converting YAML to Ignition format ([Installation guide](https://coreos.github.io/butane/getting-started/))
 - **SSH access** to your Flatcar instance
 
-### Production Deployment (Cloud)
+### Option A: Production Deployment (Cloud)
+1. **Generate configuration:** `butane --pretty --strict nextcloud-production.yaml > ignition.json`
+2. **Deploy to Azure:** Use the [Azure cloud deployment guide](#azure-cloud-deployment) below
+3. **Access Nextcloud:** Navigate to your server's IP address or domain
 
-1. **Prepare the configuration:**
-   ```bash
-   # Download and validate the production configuration
-   butane --pretty --strict nextcloud-production.yaml > ignition.json
-   ```
-
-2. **Deploy to cloud provider:**
-   ```bash
-   # For cloud deployment, use the ignition.json with your provider
-   # Examples:
-   # - AWS: Use as user-data in EC2 launch
-   # - DigitalOcean: Use as user-data in Droplet creation
-   # - Azure: Use as custom-data in VM creation
-   ```
-
-3. **Initial setup:**
-   ```bash
-   # SSH to your instance and verify services
-   ssh core@your-server-ip
-   docker ps
-   ```
-
-### Development Deployment (Local)
-
-1. **Start local VM:**
-   ```bash
-   # Use the enhanced QEMU script with port forwarding
-   ./flatcar_production_qemu.sh
-   ```
-
-2. **Deploy development configuration:**
-   ```bash
-   # Convert development config to Ignition
-   butane --pretty --strict nextcloud-development.yaml > dev-ignition.json
-   
-   # Copy to VM and apply (details in VM setup section)
+### Option B: Development Deployment (Local)
+1. **Set up workspace:** Follow the [local development setup](#local-development-setup) below
+2. **Start VM:** Use QEMU with the provided script and port forwarding (ports 8080, 8443)
+3. **Access Nextcloud:** Open `http://localhost:8080` in your browser
+   docker run --rm -p 8000:80 -d nginx
+   curl localhost:8000
    ```
 
 ## 📁 Project Structure
@@ -112,7 +96,7 @@ flatcar-app-nextcloud/
 | Aspect | Production | Development |
 |--------|------------|-------------|
 | **SSL/TLS** | Let's Encrypt automatic | Self-signed certificates |
-| **Ports** | 80, 443 | 8080, 8443 |
+| **Ports** | 80, 443 | 8080, 8443, 9080, 9081 |
 | **Database** | Persistent volumes | Persistent volumes |
 | **Performance** | Optimized for scale | Optimized for development |
 | **Security** | Hardened | Development-friendly |
@@ -147,6 +131,56 @@ flatcar-app-nextcloud/
 - **Exposed ports**: Only HTTP/HTTPS exposed to public
 - **SSL/TLS**: End-to-end encryption in production
 
+### VPN and Private Access
+For enhanced security, you can deploy Nextcloud behind a VPN or WireGuard:
+
+#### Option 1: WireGuard VPN Integration
+```bash
+# Add WireGuard to your Flatcar configuration
+# In your .yaml file, add a WireGuard service:
+services:
+  - name: wg-quick@wg0.service
+    enabled: true
+```
+
+Configure WireGuard to:
+- Only allow VPN clients to access Nextcloud ports (80/443)
+- Keep database and admin ports (5432, 8081) internal-only
+- Use firewall rules to block direct external access
+
+#### Option 2: Azure Private Network
+```bash
+# Deploy in Azure with private networking
+az network vnet create --name nextcloud-vnet --resource-group nextcloud-rg
+az network subnet create --name nextcloud-subnet --vnet-name nextcloud-vnet --resource-group nextcloud-rg
+
+# Create VM in private subnet
+az vm create \
+  --resource-group nextcloud-rg \
+  --name nextcloud-vm \
+  --subnet nextcloud-subnet \
+  --public-ip-address "" \
+  --custom-data ignition.json
+```
+
+#### Option 3: Cloudflare Zero Trust Tunnel
+Add Cloudflare tunnel to your docker-compose.yml:
+```yaml
+cloudflared:
+  image: cloudflare/cloudflared:latest
+  command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TOKEN}
+  restart: unless-stopped
+  networks:
+    - nextcloud-network
+```
+
+This approach:
+- ✅ Hides your server's real IP address
+- ✅ Provides automatic SSL/TLS termination  
+- ✅ Enables access control and authentication policies
+- ✅ Protects against DDoS attacks
+- ✅ No need to open ports 80/443 on your firewall
+
 ### Container Security
 - **Non-root execution**: All containers run as non-privileged users where possible
 - **Resource limits**: Memory and CPU constraints prevent resource exhaustion
@@ -157,7 +191,7 @@ flatcar-app-nextcloud/
 - **Regular backups**: Automated backup scripts included
 - **Database encryption**: PostgreSQL supports encryption at rest
 
-## � CI/CD and Validation
+## 🔄 CI/CD and Validation
 
 This project includes comprehensive automated validation to ensure all configurations are error-free and secure.
 
@@ -212,78 +246,155 @@ docker-compose version
 - **Local Script**: `scripts/validate-yaml.sh` for pre-commit validation
 
 
-## �🚀 Deployment Guide
+## � Deployment Guide
 
-### Cloud Deployment (Production)
+### Azure Cloud Deployment
 
-#### Step 1: Prepare Ignition Configuration
+#### Step 1: Prepare Your Environment
+```bash
+# Install required tools
+# - Azure CLI: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli
+# - Butane: https://coreos.github.io/butane/getting-started/
+
+# Authenticate with Azure
+az login
+
+# Clone this repository
+git clone https://github.com/your-username/flatcar-app-nextcloud.git
+cd flatcar-app-nextcloud
+```
+
+#### Step 2: Generate Ignition Configuration
 ```bash
 # Validate and convert the production configuration
 butane --pretty --strict nextcloud-production.yaml > ignition.json
 
-# Verify the output
-jq . ignition.json
+# Verify the output is valid JSON
+jq . ignition.json > /dev/null && echo "✅ Ignition file is valid"
 ```
 
-#### Step 2: Deploy to Cloud Provider
-
-**AWS EC2:**
+#### Step 3: Deploy Azure Resources
 ```bash
-# Use ignition.json as user-data when launching instance
-aws ec2 run-instances \
-  --image-id ami-xxx \
-  --instance-type t3.medium \
-  --user-data file://ignition.json \
-  --security-group-ids sg-xxx
-```
+# Create resource group
+az group create --name nextcloud-rg --location eastus
 
-**DigitalOcean:**
-```bash
-# Create droplet with user-data
-doctl compute droplet create nextcloud \
+# Create VM with Flatcar and custom data
+az vm create \
+  --resource-group nextcloud-rg \
+  --name nextcloud-vm \
   --image flatcar-stable \
-  --size s-2vcpu-4gb \
-  --user-data-file ignition.json
+  --size Standard_B2s \
+  --custom-data ignition.json \
+  --admin-username core \
+  --generate-ssh-keys
+
+# Get the public IP address
+VM_IP=$(az vm show -d -g nextcloud-rg -n nextcloud-vm --query publicIps -o tsv)
+echo "Your Nextcloud server IP: $VM_IP"
 ```
 
-#### Step 3: Initial Configuration
+#### Step 4: Verify Deployment
 ```bash
-# SSH to your instance
-ssh core@your-server-ip
+# SSH to your instance (may take 2-3 minutes for services to start)
+ssh core@$VM_IP
 
-# Verify services are running
+# Inside the VM, check service status
 docker ps
-docker-compose -f /opt/nextcloud/docker-compose.yml logs
+docker-compose -f /opt/nextcloud/docker-compose.yml ps
 
-# Access Nextcloud at https://your-domain.com
+# Exit SSH and test web access
+exit
+curl -I http://$VM_IP
 ```
 
-### Local Development Deployment
+### Local Development Setup
 
-#### Step 1: Start Development VM
+#### Step 1: Set Up Flatcar Workspace
 ```bash
-# Launch VM with port forwarding
-./flatcar_production_qemu.sh
+# Create and enter the workspace (following Flatcar tutorials)
+mkdir flatcar
+cd flatcar
 
-# VM will be accessible at:
-# - HTTP: http://localhost:8080
-# - HTTPS: https://localhost:8443
+# Download Flatcar QEMU tools and image
+wget https://stable.release.flatcar-linux.net/amd64-usr/current/flatcar_production_qemu.sh
+wget https://stable.release.flatcar-linux.net/amd64-usr/current/flatcar_production_qemu_image.img
+
+# Create a backup for fresh restarts
+cp flatcar_production_qemu_image.img flatcar_production_qemu_image.img.fresh
+
+# Make the script executable
+chmod +x flatcar_production_qemu.sh
+```
+
+#### Step 2: Get Nextcloud Configuration
+```bash
+# Clone this repository
+git clone https://github.com/your-username/flatcar-app-nextcloud.git
+cd flatcar-app-nextcloud
+
+# Generate development Ignition config
+butane --pretty --strict nextcloud-development.yaml > dev-ignition.json
+
+# Verify the configuration
+jq . dev-ignition.json > /dev/null && echo "✅ Development config is valid"
+```
+
+#### Step 3: Start Development VM
+```bash
+# Ensure fresh image (important for consistent testing)
+cp ../flatcar_production_qemu_image.img.fresh ../flatcar_production_qemu_image.img
+
+# Launch VM with Nextcloud configuration and port forwarding
+# Note: Using non-privileged ports to avoid requiring sudo
+../flatcar_production_qemu.sh \
+  -M 4096 \
+  -f 8080:80 \
+  -f 8443:443 \
+  -f 9080:8080 \
+  -f 9081:8081 \
+  -i dev-ignition.json \
+  -- -snapshot
+
+# The VM will start with these accessible endpoints:
+# - Nextcloud (HTTP): http://localhost:8080
+# - Nextcloud (HTTPS): https://localhost:8443 (self-signed cert)
+# - Nextcloud (Direct): http://localhost:9080
+# - Database Admin: http://localhost:9081
 # - SSH: ssh -p 2222 core@localhost
 ```
 
-#### Step 2: Deploy Development Configuration
+#### Step 4: Verify Local Deployment
 ```bash
-# Convert development config
-butane --pretty --strict nextcloud-development.yaml > dev-ignition.json
-
-# Copy to VM
-scp -P 2222 dev-ignition.json core@localhost:/home/core/
-
-# SSH to VM and apply
+# In a new terminal, test basic Docker functionality (Flatcar tutorial style)
 ssh -p 2222 core@localhost
-sudo cp dev-ignition.json /var/lib/flatcar-install/ignition.json
-sudo systemctl reboot
+
+# Run basic container test
+docker run --rm -p 8000:80 -d nginx
+curl localhost:8000
+docker stop $(docker ps -q --filter ancestor=nginx)
+
+# Check Nextcloud services
+docker-compose -f /opt/nextcloud/docker-compose.yml ps
+docker-compose -f /opt/nextcloud/docker-compose.yml logs --tail=20
+
+# Exit SSH
+exit
+
+# Test from host machine
+curl -I http://localhost:8080
+curl -k -I https://localhost:8443
 ```
+
+#### Step 5: Access Nextcloud Web Interface
+Open your browser and navigate to:
+- **Main interface:** http://localhost:8080 or https://localhost:8443
+- **Direct access:** http://localhost:9080
+- **Database management:** http://localhost:9081
+
+**Default credentials:**
+- **Admin user:** admin
+- **Admin password:** admin123
+- **Database credentials:** Available in Adminer at port 8081
 
 ## 🛠️ Management and Maintenance
 
@@ -343,6 +454,25 @@ The configuration includes optimized PostgreSQL settings:
 ## 🔍 Troubleshooting Guide
 
 ### Common Issues
+
+#### Docker Compose Not Available
+If you see "command not found" errors for `docker-compose`:
+
+```bash
+# Check if Docker Compose download completed
+sudo systemctl status docker-compose-setup.service
+
+# Check if binary is in place
+ls -la /opt/bin/docker-compose
+
+# Check if /opt/bin is in PATH
+echo $PATH
+
+# Manually test Docker Compose
+/opt/bin/docker-compose --version
+```
+
+The system automatically downloads Docker Compose binary during first boot. If the download fails, check network connectivity and retry the service.
 
 #### Services Won't Start
 ```bash

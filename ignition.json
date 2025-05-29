@@ -9,82 +9,35 @@
           "docker",
           "sudo"
         ],
-        "homeDir": "/home/nextcloud",
-        "name": "nextcloud",
+        "name": "core",
         "sshAuthorizedKeys": [
           "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... your-ssh-key-here"
-        ],
-        "shell": "/bin/bash",
-        "uid": 1000
+        ]
       }
     ]
   },
   "storage": {
     "directories": [
       {
-        "group": {
-          "name": "nextcloud"
-        },
         "path": "/opt/nextcloud",
-        "user": {
-          "name": "nextcloud"
-        },
         "mode": 493
       },
       {
-        "group": {
-          "name": "nextcloud"
-        },
-        "path": "/var/lib/nextcloud",
-        "user": {
-          "name": "nextcloud"
-        },
-        "mode": 493
-      },
-      {
-        "group": {
-          "name": "nextcloud"
-        },
-        "path": "/etc/ssl/nextcloud",
-        "user": {
-          "name": "nextcloud"
-        },
-        "mode": 448
-      },
-      {
-        "group": {
-          "name": "nextcloud"
-        },
         "path": "/var/log/nextcloud",
-        "user": {
-          "name": "nextcloud"
-        },
         "mode": 493
       }
     ],
     "files": [
       {
-        "group": {
-          "name": "nextcloud"
-        },
         "path": "/opt/nextcloud/.env",
-        "user": {
-          "name": "nextcloud"
-        },
         "contents": {
           "compression": "gzip",
-          "source": "data:;base64,H4sIAAAAAAAC/3SS32vbMBDH3/1X3MjrOtqVZWzgB9XSEoNtafrBkieh2EpiqK0gyXT974edtE297VHf+3AfHXcLYN41Qx1b10Pm+n17GLyZXnvnobK/Y/3ohgae2ngE5kI8eCt+FskCBMkUz+X2O2RH0x8soKKAkwnhyfkmwM7unbfQ2NOje+5sHz8kyeKqA2ATzc4E+16bMCrkihOh8UPav+jfUiUI/1fOkBC/KMdptkbViuiSaCE5rVYaP7wWxx+8jYSarp0NnVRkI7OCKqwRLvPqrDMj+Ffp/8b39VGKXWfmLrgBxTCSBOSaCAI/KIctVRwwLVFeXfnOQfrsBn/TTJ0+1a67AiRXQpIXUMzJj2HYXV7zHskCuG3aAJmpj/NVcIJzoddUyNSP0CVglMt0ef/127RQ6/fOd6avLQQbY9sfwnQ6p9e7Stia6ZKUlG91kZe5TL/cfS6nVLGCInxJ75arM4o2mmxIpmROKy3zkqT3y9vb5E8AAAD//7n8RBKsAgAA"
+          "source": "data:;base64,H4sIAAAAAAAC/2xSwW6bQBC98xUj+ZJICTKOkjSVfHADSiwZQ1mstie0Ycf2qrCLdpaQ/n21EGLq9LTS2zfzZua9GYT4ipVualQWHrXay0NruJVawV4b2OKbLSvdCuikPUKqyR4Msu8bbwZM1k2FQGitVAfq+ZUueQUWyUHAlQBx6u95s0kHCLnlL5zwX1kvTVj+lEWsCL8t1Sh/Qncsyv6HpyvGfiRZuJwIFg0n6rQRTvm0ykrUUp0te0HDNm6J9/EvvW30M3/cJLuwWIXxejtoc1f96etDvv8OFjdOMtQ1/6x0utNk1KlYmMSr9XbZc46a7OQrz3Ysj0YKO3GugsW9P/fnfnAVuGfhB7dXwcPCD+6++IEfzOduoAyFJHjk5fH86lkUrlnxnLB8aRzpHUiTLF/e3dw/9OtMovLh+kWtDUKDppZE8hUvvfQ5LeIoTrJfxWYdr/Pl4vYu7tFduklW4TsaPJ333GqL9NWbwfWYrdG/IVzI6c9oTs9aq7JqBdLgKJqeJcZY1VzxA/bBc+TordGEAhpt7NBvcn6wWlfU8+K2stKJW9OSRQGid3EoeeVG6pZAoe20+e1CTiUqhw7VDKv9NcmDQgGMbaBEY+VeltwiQSerCuioO3gxuiM00HGj3Bm9vwEAAP//nea2GYkDAAA="
         },
         "mode": 384
       },
       {
-        "group": {
-          "name": "nextcloud"
-        },
         "path": "/opt/nextcloud/docker-compose.yml",
-        "user": {
-          "name": "nextcloud"
-        },
         "contents": {
           "compression": "gzip",
           "source": "data:;base64,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"
@@ -92,13 +45,7 @@
         "mode": 420
       },
       {
-        "group": {
-          "name": "nextcloud"
-        },
         "path": "/opt/nextcloud/nginx/nextcloud.conf",
-        "user": {
-          "name": "nextcloud"
-        },
         "contents": {
           "compression": "gzip",
           "source": "data:;base64,H4sIAAAAAAAC/+xWTXPiOBC98yu6MhxmDw6BECoVag+ZbCZJ7cxOKuaQm0qR2qBFllTqNuDZyn/fMubDEJJsTnsZDmC633vqbrVbwhk6JvinBQAw93GKUSjvHCo23hF0T3r9Yeu51ZowhxXMOGULjdBBVh03Nm7RyU2Ox1wGpOESojGThWVRmUCGYI2SlWDHK0ZOiCPKvIYuvz7BF0lGQYrMxo1paSR0OjMWwbsayioI50NBkz2TRivLjW2KGKQ1MxRscvQFw+Cs9ihr0LHI5UI8eV0KMj8RuoObnUhufpqwG8i4sqzVqz9iJmO5a1E+D8LiDC0MGuZlTYBxwZ1gpXH1oyLaqcrf5N2uQc4kqWgC14RFbnf8i9w2Yi5CXVBwuGBlfaFXO1VXMc4wbl0X5yc19bmZ9O1odL+GftZVGj7k6BiyaNBpW/7Waoht1a0hRgdrzS1GOJkjiK15S/F1EtBp6FSfEP2iFEESQdVtF53OJujhASAhiwlKjRFuPTG0J574HeBj8oDSJnf30I6Ye0YhtY7vkr76OJdRo66eoF0jpNZiIbK1q3r6gNB99OyhTWqCOX6A94FUG4v5yNBebUzwscF9PtwL6aYZ5oYnQGizhMzYoQaFkSHzERpt8nZ39PunQGSXu9r7743yCdL0GyjvMjMuYt0zn5uRHAxiqUxWVGGarHphdiYVke1UruOA+fA1gphiuU+aYvmSE6pdVN4SjL6ls+5xb/V7uidtwgQjwfXVH7fXyUN6mVxep93eeXJz9T1Jby97Z4OLHV/vbLD2nZ7399fEDKNYVW8t7bPsYAnruUqoimi4hLo5aL90G0LV1JsGuvKO0XEyKgMmP0J9Ihw5T85k2RFIO5clDQ9zv0aZN0jp5ffrHw93N3d/vcN7TNPlu1EfQHDUHULuNf7+ZL2avuQ2Mn3A3M8QHpN7P8eIOvlSbryZJFZjIyZG43atLfCgICFDLhdQBOulhuqw2HjfPkmaSz4VWVZVfNCH/p+/xuGb47DKk/7HYbizMXUTjOorBB3QX92TtreMk1did/o9TET5CmY9n59b/wYAAP//Eqk5I6sJAAA="
@@ -106,128 +53,72 @@
         "mode": 420
       },
       {
-        "path": "/usr/local/bin/setup-nextcloud-storage.sh",
+        "path": "/usr/local/bin/generate-dev-ssl.sh",
         "contents": {
           "compression": "gzip",
-          "source": "data:;base64,H4sIAAAAAAAC/3SUUW8iNxSF3/0rzg5DCds100R9aaqsxCakjUpgJdi2q9UqMuM7YOGxR2MPJFr2v1c2BAjNvvDA2N855/re23qTzZTJZsItWAsjevS5to3ExNtazAkT8k2FSV6ryrMW+o23pfAqF1o/QZKn3DsII5FbU6h5U5OD290tbI0tjcxK1daUZLxjzJEHp8aiUhUVQmnGhuM/Hm7vhoOrJFuJOtN2nplnL9mOx13w0tN2nrByKVUNXiFJz6SqjSgJSfpMSboJY9rOz7r4xgCA8oWNR4UndH5uf+btkrcl2n9etu8v25NO9xLp2wQbeCJwccxi3yMLycSL2iszP6rSc9LoLGGshX+E8ofgXBnl4S1yW1aaPEEVECuhtJhpYqoIH8pQPr46vvE+k7TKTKP17/ALMjFENBH4wcOPJXq9XhLPH312XvjGgfN1sHdxwGOzga8bYoUK7ofWLiNaSKm8skZoSOWWDmf0mOtGBumZtT7+22UfxuPpw83d5K+r9Ey7mV6Cy8qAW4z694N39+NPo+nH8d1oig3EeolOenF1lWQJvlW1Mh7p+fcONnAk0XHZl1/4b1/fplnW6bL+3/27Yf/DcBDxk9f5088fB9hgXlMFvo6e9kLnb66STro32Hmh2WWh9l/ADZL0RCrB16Oi3/Sn/eeEuy763/kNFiQkuDnvHh7q1jZGntbxEukeuH2k+NPC9YLyZWwOXZOQT+ERSuE9SayVX8A2NbSYkY7nVYE3mOmlkuBDjAb/Tq+H4083D4F91Du4eP/T+VGWI28RHh4z1uxgaqtGj/5XFEqTe3KeymR/u1wWrhe/8ttXpJPTdKQdvZS+CXo/CHlCi3m3nEKxPSpiRva0tChCwd9hrbRG4wh1aNPTEC1c1xSWgF8QStsYj8qGrggzGAW3k2WNU86TyZ/YNvdu3Wy3k5odttNLrIBTYQxRinpJddSPJ7xt8sUr17Ne45SZ8+CWH9zGedxtnaMVsx9ymbD/AgAA///eDTSjugUAAA=="
+          "source": "data:;base64,H4sIAAAAAAAC/3yRUU/CMBSF3/srrsUnYtuBbgaSPRhIDMmCxumbiSnrhc117VwLsn9vZgYID7719J72fDl3cCVWhREr6XIygEc02EiP4FCvmSs2BhWkaQIZNr5YF5n06GBtG1C4Q23rCo0nJE2Tj/niJabC1l4Y3PtM260SzmlKqlIVDbAa6HXvo4RgllugfVxhNv8FXuZxzimxNRrnNDT4BWwfBhNgBr9LbKFxcnoXTCJgLpfjMAKmZOvgNgqBGavQwTsBAGAltnbrT1iixJbXWNGD4XzaEZ2N3Xb1CVTM4rdUpK/xHHciiRObSS2eOnXgFbNlrLvr3Dp/fC2Vwr0H2v2CmX/QfikrjOfLdHo033RqyE968Twdje95wAM++hXdacxHISUkyyurIAqCP0WLYUfct31Z66ZftgLp4bSbnwAAAP//OneVLBICAAA="
         },
         "mode": 493
       },
       {
-        "path": "/usr/local/bin/setup-ssl.sh",
+        "path": "/usr/local/bin/nextcloud-logs.sh",
         "contents": {
-          "compression": "gzip",
-          "source": "data:;base64,H4sIAAAAAAAC/3xUb2/bthN+z09xZewmaUvLze+XDPXgYYGTdQHcZKhaYEMWBLR0kjhTpEae7GhNvvtAKbGVwplf2PLpuefunvuz9ypaKBMtpC/YHsTxHGboSGUqkYQQI9VVsNdVZR15mCPtezg3iWsqgoMEHS0sHYI0KXjUmfAqN5hCsiXxjHkkEFhbqFSFmVSasTie355dfJ7yCCmJvNeRwTtKtK1Tzs6uPp1eXE754Nvl+e9fZvOrr2e3nW0itE2kLqynB87mVx9vf7mYn095tJIu0jbfsgRO4UP+I21zzpi2+cEhfGMAAJgUFvjgIA1F7r8d/iGGpRimMPx1Mvw0Gcb7hxMYvOFwD4QIQgIfPMXi7IEFRWztEgQ0K+WsKdEQqAzkSiotFxqZyuAaRAaRraiX1AjNCm5+BCrQtJm00sjusaPc4bFBvpUsU20pwGMkUiaHumrb1lccMusgtaVUZgKDTjkesp4VmCxDoo+NA+W3ObdNXCMUcoUgwaHUjyShmsSWZQCI1cb5pyjFVWRqreH1a7i+Bv4UC15NgW86xeHmZifi/dEPo/FoPHofED1R2vpOibCs2hLJQo703fD1Cuat1x7EZCswuTJ3EHytk07pplXDkzSp1NYglDbFTtHGE5YJafCt45PmoqM46tV3fw/k6s6t/eppGH6t0Q0I0YvyZwsLHyGMNUIZQicTUqvn72TuEAVZ/8yKpVQaZFoq8/NWsx4ihZ1mEZIRlaQC+OBxx6JgG1VYPkcusfkeuMSmxfVasWnHi+KDXZBUYel9nSTofVZr3XQtQe3xv2jCLcD0HWRS69DohUyWodsvnBK+4crRoJOEtwF52yHbl5lim6BtwI8dMrC/wNptC65Q2yosckToA76LtjNSWMK9cB2hcrZCBxW6UnmvrPEsKezagPi8HajJ5mkrNmdJUdoUTsbjnjF6ExrwtOHxHNoLFpav0kiYcsZ2JbQ5bLZC470Gh3+DuDsefwBhcL3EBpyXk/+PP5yA8IU8Oj4BkcrGw/9OjkEYm+Kz+VtiY2vaMRl90HPEziHz9eIv4NFs+jWO4i/TmCRhNJ/OFDXR1fTK5dKofyQpa6LZ5XTXQMs0xTsCHpgwoVNNl7LE6dllPHmEvwvP6/V69PT/4rfJ9rCwB/ZvAAAA//86TSOt4wYAAA=="
+          "compression": "",
+          "source": "data:;base64,IyEvYmluL2Jhc2gKY2QgL29wdC9uZXh0Y2xvdWQKZG9ja2VyLWNvbXBvc2UgbG9ncyAtZiAiJEAiCg=="
         },
         "mode": 493
       },
       {
-        "path": "/usr/local/bin/backup-nextcloud.sh",
+        "path": "/usr/local/bin/nextcloud-shell.sh",
         "contents": {
-          "compression": "gzip",
-          "source": "data:;base64,H4sIAAAAAAAC/8xUTW/jNhC981e8MhKcD9BCTwUMpEA2cbtBs9nFOntIsYBBiyOZiESqJFUnjvPfC32t5eyml156s/Vm5r0Zvpmjn5KVNslK+jU7wi09hrSwtcI7mT7UFRap01VgR/hELrOu9FAyyJX0BGlU+werNtRjo8MajgKZoK1BKY3MqSQTGPMUIKi2qHRFmdQFY+8uLv/48ml5df35nCd/S5cUepWYgT/pi3J2dXE3P4+OlQyEs/g+LmO1jN/HH+LFCfs8v5vf3l1/vF1eXdwvznn03Fc9BGbilxfObj7+vvzt+mY+0Nn8O7ppYXPOWGHz4xM8MwCgdG3Be/7JWXwv4lLECvH7WfxhFi8mJzNEpxw7BCIICR4NRJy9tLXAF0G6oE0+mm9HyBk7wqWjpnj3BUo7SoN1T6x8UNpBVODRflhtxtzIVUEopTaBjDQpobSKOrIWbMhew5wpmz6QE6ktK+sJIkNiqzAaw2HA9KksQI+UQtzhWxC+toPxtbIQNTabjWhtUK0r2DQd084aWghhDXY7BFdTo7631mCkTnXzsRE9Av6bXrXqhVb5UtVlBfFl1MP+1w75Vlf49WDKewqhViJqPDj1fxXTfMtfdbB/LxzTY1rUqukilem62xBP3mtr/MkP29xncxakg0i32ZtCZJC9lCBdI6VvUFzi+wUaMNGJovMmPTlNOmVvgIPYH+Pfajdr0oe0TaTWZDpvBnOl/b84s0P/Z9bMsrE3LwuSpq5gi2FFfae9BfqXGw6eLRQ5hLU0iA4vDpR88pxl2qjD7YUITxUhgyiDLglnrxOFooJCq+XG5sNR8HpLw8VcXP/ZHsQawq/fMgs/5a1V+Cl2kJsHTJ4rp01A9PPLpDlWDpOvZoIJJiNn1hWa+TYC1BQLvaUZohEtZ/8EAAD//0KamTQvBgAA"
+          "compression": "",
+          "source": "data:,%23!%2Fbin%2Fbash%0Acd%20%2Fopt%2Fnextcloud%0Adocker-compose%20exec%20nextcloud%20bash%0A"
         },
         "mode": 493
       },
       {
-        "path": "/usr/local/bin/health-check.sh",
+        "path": "/usr/local/bin/nextcloud-occ.sh",
         "contents": {
-          "compression": "gzip",
-          "source": "data:;base64,H4sIAAAAAAAC/5SU0U8jNxDG3/1XfLdsLtDTsvBwUpVTKqGDHkgQqsCprU4VMuvZXQtjb21vSgX875XtzSZEvHSfnNF45vt948neh/Je6vKeu5btYUFPvlKmFzgnrnyLry1VD7iprOw828OV0dIb6+DIrmRFaFMa1wKOtHDgiqx3kDU0kSDBmCOPgnqDTnZUc6kYu7z+dvfrxeXZPCtX3JbKNKVedy5TyaIKnQ+VaTJ2en11crGYZ/nz4uyP26+X199P71JsVihTcdUa518zxpRp9g/wzACAqtYgy/cF94Tpp8mfxeSxmAhMzmeTq9nkZnowQ/5Thhd4IhQcWb6WlbFXxvZwY3pbEUivpDX6kbRnssYPFDVK0/ktyYekV/jrC3xLOjaPzDwdU5V3boyZnzirZeiY3K6M9lxqsnCe+96xaMXdGHYjY4RH8JTE/CiGamPH4UiNsSPEPSwJ6aAbqZ++QJiYHz5Z4wOEqR7IFpV57IyjdyDfJhz++6jQOWT50C042VjqUPyN7HuXbbmx/pRpkJ0tl9fLGW4Gjfko1kEbD9trLXWTvbk4EB6PwVrGozCa4sGS761GnhLT+JKZ57e3v8GS64x2NDjZet/teNhbNc9C3M3KMk+Pq0z2H3Ztl+REn6requBOEdh7qzL8UgpalbpXaod5mzfqiO0HmjipWGDMHygS5oA4xI62mYR0D3Adr9ZAIXAXA7tYjjc0z/dFjbRp8n4z0fD0uVQojvEC/s8Dps+dldoj//w6xQscCUxdOSnL6cGa/0eADkUzFI3Hz5/fPPsR+veT5eJi8W2G0yA1XggDzp/j8XXyf5iXvU7GubB+u7uAjx+xmerm18aSLX1R24lS67+tVBYdd45E0kRP0uOIkXK0uXK+lT6Mbyv7OGzvfwEAAP//63OybkgFAAA="
+          "compression": "",
+          "source": "data:;base64,IyEvYmluL2Jhc2gKY2QgL29wdC9uZXh0Y2xvdWQKZG9ja2VyLWNvbXBvc2UgZXhlYyAtdSB3d3ctZGF0YSBuZXh0Y2xvdWQgcGhwIG9jYyAiJEAiCg=="
         },
         "mode": 493
       },
       {
-        "path": "/etc/logrotate.d/nextcloud",
+        "path": "/usr/local/bin/nextcloud-reset.sh",
         "contents": {
           "compression": "gzip",
-          "source": "data:;base64,H4sIAAAAAAAC/1SNQQoCMQxF9z1F1i7sZtDzhE4swbQZkigO4t3FFhR374Xwfr6jZdGaOz2iiN7WfDiKVngmAIAVWfZBpoFBcB5StG1G7vOHBPe/S2N37lWvw7oGX6htMUPF6BM6LQt8N3+UXukdAAD//8qUjfKTAAAA"
+          "source": "data:;base64,H4sIAAAAAAAC/1yQQU/jMBCF7/4Vr+llN7uJ01vV26orIS4VqhCcU3tKLFyP5Zm08O9RAqUSZ3/f83uzXNhDSPbQy2CW2JOQYkdv6iKPHkcu8HSmyPlESfHr+d9+d7+72+A/iRZ+F/QxwvfaL34bQ25gVN/M4xAElzABn/QM39JnrfqyHgqJYKsl/tlCGa5PjuJfcMGlD4pVByHHycv8yklDGqlt28pIJMpYdcY4D8tZbbr+YTy7VyqN41NmIXi+JDRnU05oynFuYOsp7RhebA1/sDUK+SC2/qmOGY2/bryNKPPJJiiSUounIEExqOaNtZFdHwcW3ay7dTcVn+Axt5X5CAAA///XDWuneQEAAA=="
         },
-        "mode": 420
-      },
-      {
-        "path": "/etc/sysctl.d/99-nextcloud.conf",
-        "contents": {
-          "compression": "gzip",
-          "source": "data:;base64,H4sIAAAAAAAC/2zLSw7CIBSF4XlXQeKcFFugDtiCW2iQXg1RHrncPnT1pomRSafn/86JXWEj90rzxDLgPWGw0QFLmXzwH0s+xdIsgZfV5uwjlGJEuw+TR3qPuAsjZF1u1j0fmOY4/aJsIhB3CYFjgDAGuxmhtNZnoWpaD5PPS8/J5XF/mr69KDbobmjZsVr/SknZqaq+AQAA///Azv515wAAAA=="
-        },
-        "mode": 420
-      },
-      {
-        "path": "/etc/systemd/system/nextcloud-firewall.service",
-        "contents": {
-          "compression": "gzip",
-          "source": "data:;base64,H4sIAAAAAAAC/6zMsU7zMBQF4N1Pcbcuv9tfpQOLh7QxolJVoiQVQ5TBcW6pkWNb9g0kb89QeAAipnOko/M1F2eoZTkmHU0g450440Ta+rGHJxPxU1kL5WgxsT1efUThfvZ1wvhhNDLWVPfWsnoOKLzDdPPEShyUcdmVMMrJkJgxMTmhrkhFEpvOuE2n0g24hpUJpDqLCXgGx3NxqYEHIB2A8z74SLDdAn+H7HCQRb1azjz+/xNmt3tY6BiwfuF1gESKEDi/p6zqbH86Vs8y/1fKU1bL/Hdy8S3n5UuxYqw5ukTK2pa9KkfY72cxjJYMHxPGNan4hsS+AgAA//8p5GXdMgIAAA=="
-        },
-        "mode": 420
-      }
-    ],
-    "filesystems": [
-      {
-        "device": "/dev/disk/by-label/NEXTCLOUD_DATA",
-        "format": "ext4",
-        "label": "NEXTCLOUD_DATA",
-        "path": "/var/lib/nextcloud",
-        "wipeFilesystem": false
+        "mode": 493
       }
     ]
   },
   "systemd": {
     "units": [
       {
-        "contents": "[Unit]\nDescription=Mount Nextcloud Data Disk\nBefore=setup-nextcloud.service\n\n[Mount]\nWhat=/dev/disk/by-label/NEXTCLOUD_DATA\nWhere=/var/lib/nextcloud\nType=ext4\nOptions=defaults,noatime\n\n[Install]\nWantedBy=multi-user.target\n",
-        "enabled": true,
-        "name": "var-lib-nextcloud.mount"
-      },
-      {
         "enabled": true,
         "name": "docker.service"
       },
       {
-        "contents": "[Unit]\nDescription=Setup Nextcloud Environment\nAfter=docker.service var-lib-nextcloud.mount\nBefore=nextcloud.service\nConditionFirstBoot=true\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nUser=root\nExecStart=/usr/local/bin/setup-nextcloud-storage.sh\nExecStart=/usr/local/bin/setup-ssl.sh\nExecStart=/bin/mkdir -p /var/lib/nextcloud/data /var/lib/nextcloud/config /var/lib/nextcloud/apps\nExecStart=/bin/mkdir -p /var/lib/nextcloud/db /var/lib/nextcloud/redis /var/lib/nextcloud/backups\nExecStart=/bin/chown -R nextcloud:nextcloud /var/lib/nextcloud\nExecStart=/bin/chown -R nextcloud:nextcloud /opt/nextcloud\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nDescription=Setup Nextcloud Development Environment\nAfter=docker.service\nBefore=nextcloud-dev.service\nConditionFirstBoot=true\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/mkdir -p /opt/nextcloud/data /opt/nextcloud/config /opt/nextcloud/apps\nExecStart=/bin/mkdir -p /opt/nextcloud/db /opt/nextcloud/redis /opt/nextcloud/ssl\nExecStart=/usr/local/bin/generate-dev-ssl.sh\nExecStart=/bin/chown -R core:core /opt/nextcloud\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
-        "name": "setup-nextcloud.service"
+        "name": "setup-nextcloud-dev.service"
       },
       {
-        "contents": "[Unit]\nDescription=Nextcloud Docker Compose Stack\nAfter=setup-nextcloud.service\nRequires=docker.service setup-nextcloud.service\nWants=network-online.target\nAfter=network-online.target\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nWorkingDirectory=/opt/nextcloud\nUser=nextcloud\nGroup=nextcloud\n\n# Pull latest images on start\nExecStartPre=/usr/bin/docker-compose pull\nExecStartPre=-/usr/bin/docker-compose down\nExecStart=/usr/bin/docker-compose up -d\nExecReload=/usr/bin/docker-compose restart\nExecStop=/usr/bin/docker-compose down\n\n# Restart policy\nRestart=on-failure\nRestartSec=30\nTimeoutStartSec=300\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nDescription=Nextcloud Development Docker Compose Stack\nAfter=setup-nextcloud-dev.service\nRequires=docker.service setup-nextcloud-dev.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nWorkingDirectory=/opt/nextcloud\nUser=core\nGroup=core\n\n# Always pull latest images in development\nExecStartPre=/usr/bin/docker-compose pull\nExecStartPre=-/usr/bin/docker-compose down\nExecStart=/usr/bin/docker-compose up -d\nExecReload=/usr/bin/docker-compose restart\nExecStop=/usr/bin/docker-compose down\n\n# Auto-restart on failure\nRestart=on-failure\nRestartSec=10\nTimeoutStartSec=180\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
-        "name": "nextcloud.service"
+        "name": "nextcloud-dev.service"
       },
       {
-        "contents": "[Unit]\nDescription=Nextcloud Backup\nAfter=nextcloud.service\nRequires=nextcloud.service\n\n[Service]\nType=oneshot\nUser=nextcloud\nGroup=nextcloud\nExecStart=/usr/local/bin/backup-nextcloud.sh\n",
-        "name": "nextcloud-backup.service"
-      },
-      {
-        "contents": "[Unit]\nDescription=Daily Nextcloud Backup\nRequires=nextcloud-backup.service\n\n[Timer]\nOnCalendar=daily\nPersistent=true\nRandomizedDelaySec=30m\n\n[Install]\nWantedBy=timers.target\n",
+        "contents": "[Unit]\nDescription=Nextcloud Development Log Viewer\nAfter=nextcloud-dev.service\n\n[Service]\nType=simple\nUser=core\nGroup=core\nWorkingDirectory=/opt/nextcloud\nExecStart=/usr/bin/docker-compose logs -f\nRestart=always\nRestartSec=5\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
-        "name": "nextcloud-backup.timer"
+        "name": "nextcloud-dev-logs.service"
       },
       {
-        "contents": "[Unit]\nDescription=Nextcloud Health Check\nAfter=nextcloud.service\nRequires=nextcloud.service\n\n[Service]\nType=oneshot\nUser=nextcloud\nGroup=nextcloud\nExecStart=/usr/local/bin/health-check.sh\n",
-        "name": "nextcloud-health.service"
-      },
-      {
-        "contents": "[Unit]\nDescription=Nextcloud Health Check Timer\nRequires=nextcloud-health.service\n\n[Timer]\nOnBootSec=5min\nOnUnitActiveSec=10min\n\n[Install]\nWantedBy=timers.target\n",
+        "contents": "[Unit]\nDescription=Show Nextcloud Development URLs\nAfter=nextcloud-dev.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/bash -c 'sleep 30'\nExecStart=/bin/bash -c 'echo \"=== Nextcloud Development URLs ===\"'\nExecStart=/bin/bash -c 'echo \"Main Nextcloud: http://localhost:8080\"'\nExecStart=/bin/bash -c 'echo \"Via proxy: https://localhost (self-signed cert)\"'\nExecStart=/bin/bash -c 'echo \"Database admin: http://localhost:8081\"'\nExecStart=/bin/bash -c 'echo \"Default admin: admin / admin123\"'\nExecStart=/bin/bash -c 'echo \"==================================\"'\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
-        "name": "nextcloud-health.timer"
-      },
-      {
-        "enabled": true,
-        "mask": false,
-        "name": "flatcar-update.service"
-      },
-      {
-        "enabled": true,
-        "name": "nextcloud-firewall.service"
-      },
-      {
-        "contents": "[Unit]\nDescription=Nextcloud Log Rotation\n\n[Service]\nType=oneshot\nExecStart=/usr/sbin/logrotate -f /etc/logrotate.d/nextcloud\n",
-        "name": "logrotate-nextcloud.service"
-      },
-      {
-        "contents": "[Unit]\nDescription=Daily Nextcloud Log Rotation\nRequires=logrotate-nextcloud.service\n\n[Timer]\nOnCalendar=daily\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n",
-        "enabled": true,
-        "name": "logrotate-nextcloud.timer"
+        "name": "nextcloud-dev-info.service"
       }
     ]
   }

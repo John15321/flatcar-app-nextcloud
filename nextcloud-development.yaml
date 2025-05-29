@@ -53,7 +53,7 @@ passwd:
         - docker                   # Access to Docker daemon
         - sudo                     # Administrative privileges
       ssh_authorized_keys:
-        - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... your-ssh-key-here"
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDBYStXBOkMIJYcU0QYEyQG8D3icRyQSnOaxNTSxqeD44ocwgXhkEz1oXPosI0DbK+yqFItlvV6glhy17lxewnPn1dAT5jInDVPdaiwzAwxIJ3nOYUH8zzLezWgP56r+D9Zl+JOl44JMnMq5naio1A88xIWe0aixCY8QmVDc95z87OGkHwAWs1i8oEnDhdERRfyv8FbvcE9LLsG0HNnzcb58sczwhHgHi7QLwlfldQ4LcE5YUnxW4Io8I6juGORTdFaaFTfZpf0O69Zv0XsKIYgSHEvdGA7QJTTONvYRLB+O6vzJJaTTk2O3rrnFha0u19TLzHKBDIMOsIvtgzvXqbDArlNTgWOum9z1vq29yfyB3WjSxefyQfIq4jVdFsXD0yEjcGneH3eVAP3UsvFCF1Dh5LUF+P7jA5bMW/x2TOSATanVpyeiYAwL0kDnQVU7gXqfr1M4hhZjdfai+GXJ1uRG58r/xTxMkQBxGwRdvoWjyEJ1kT0uKJFZ0fEQtqTk+bL0MWUrzbvEqAygYjkT1PWZVgD8mPzUoZAnmZOoy72p09mlcvmSUQgNaZUjt9agrQzW8Mbe/8zd9O8jVAy+wcPuoJspuVDxwxu3mdRcK3NA7luJs4VwjsuLSJpQEkaP15RfDKHs4tf8BltiPGvs+ZxA8LgwOtFM55gv4V0fPmyXw== janbronicki@DESKTOP-SNSADQ2"
         # Add your public SSH key above - generate with: ssh-keygen -t ed25519
         # This allows SSH access: ssh -p 2222 core@localhost
 
@@ -63,6 +63,8 @@ storage:
   # No additional disks needed - perfect for development VMs
   directories:
     - path: /opt/nextcloud         # Main application directory
+      mode: 0755
+    - path: /opt/bin               # Development scripts directory
       mode: 0755
     - path: /var/log/nextcloud     # Centralized logging
       mode: 0755
@@ -387,7 +389,7 @@ storage:
           }
 
     # Simple SSL generation script for development
-    - path: /usr/local/bin/generate-dev-ssl.sh
+    - path: /opt/bin/generate-dev-ssl.sh
       mode: 0755
       contents:
         inline: |
@@ -408,7 +410,7 @@ storage:
           echo "SSL certificate generated at $SSL_DIR"
 
     # Development helper scripts
-    - path: /usr/local/bin/nextcloud-logs.sh
+    - path: /opt/bin/nextcloud-logs.sh
       mode: 0755
       contents:
         inline: |
@@ -416,7 +418,7 @@ storage:
           cd /opt/nextcloud
           docker-compose logs -f "$@"
 
-    - path: /usr/local/bin/nextcloud-shell.sh
+    - path: /opt/bin/nextcloud-shell.sh
       mode: 0755
       contents:
         inline: |
@@ -424,7 +426,7 @@ storage:
           cd /opt/nextcloud
           docker-compose exec nextcloud bash
 
-    - path: /usr/local/bin/nextcloud-occ.sh
+    - path: /opt/bin/nextcloud-occ.sh
       mode: 0755
       contents:
         inline: |
@@ -432,7 +434,7 @@ storage:
           cd /opt/nextcloud
           docker-compose exec -u www-data nextcloud php occ "$@"
 
-    - path: /usr/local/bin/nextcloud-reset.sh
+    - path: /opt/bin/nextcloud-reset.sh
       mode: 0755
       contents:
         inline: |
@@ -456,6 +458,32 @@ systemd:
     - name: docker.service
       enabled: true
 
+    # Download and setup Docker Compose
+    - name: docker-compose-setup.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Download Docker Compose binary
+        After=network-online.target
+        Wants=network-online.target
+        ConditionFirstBoot=true
+        ConditionPathExists=!/opt/bin/docker-compose
+        
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/bin/mkdir -p /opt/bin
+        ExecStart=/bin/bash -c 'curl -L --connect-timeout 30 --max-time 300 -o /opt/bin/docker-compose "https://github.com/docker/compose/releases/download/v2.36.2/docker-compose-$(uname -s)-$(uname -m)"'
+        ExecStart=/bin/chmod +x /opt/bin/docker-compose
+        TimeoutStartSec=360
+        
+        [Install]
+        WantedBy=multi-user.target
+
+    # Enable systemd-sysext (for other extensions)
+    - name: systemd-sysext.service
+      enabled: true
+
     # Setup Nextcloud directories and SSL
     - name: setup-nextcloud-dev.service
       enabled: true
@@ -471,7 +499,7 @@ systemd:
         RemainAfterExit=yes
         ExecStart=/bin/mkdir -p /opt/nextcloud/data /opt/nextcloud/config /opt/nextcloud/apps
         ExecStart=/bin/mkdir -p /opt/nextcloud/db /opt/nextcloud/redis /opt/nextcloud/ssl
-        ExecStart=/usr/local/bin/generate-dev-ssl.sh
+        ExecStart=/opt/bin/generate-dev-ssl.sh
         ExecStart=/bin/chown -R core:core /opt/nextcloud
         
         [Install]
@@ -483,8 +511,8 @@ systemd:
       contents: |
         [Unit]
         Description=Nextcloud Development Docker Compose Stack
-        After=setup-nextcloud-dev.service
-        Requires=docker.service setup-nextcloud-dev.service
+        After=setup-nextcloud-dev.service docker-compose-setup.service
+        Requires=docker.service setup-nextcloud-dev.service docker-compose-setup.service
         
         [Service]
         Type=oneshot
@@ -492,13 +520,14 @@ systemd:
         WorkingDirectory=/opt/nextcloud
         User=core
         Group=core
+        Environment=PATH=/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
         
         # Always pull latest images in development
-        ExecStartPre=/usr/bin/docker-compose pull
-        ExecStartPre=-/usr/bin/docker-compose down
-        ExecStart=/usr/bin/docker-compose up -d
-        ExecReload=/usr/bin/docker-compose restart
-        ExecStop=/usr/bin/docker-compose down
+        ExecStartPre=/opt/bin/docker-compose pull
+        ExecStartPre=-/opt/bin/docker-compose down
+        ExecStart=/opt/bin/docker-compose up -d
+        ExecReload=/opt/bin/docker-compose restart
+        ExecStop=/opt/bin/docker-compose down
         
         # Auto-restart on failure
         Restart=on-failure
@@ -521,7 +550,8 @@ systemd:
         User=core
         Group=core
         WorkingDirectory=/opt/nextcloud
-        ExecStart=/usr/bin/docker-compose logs -f
+        Environment=PATH=/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+        ExecStart=/opt/bin/docker-compose logs -f
         Restart=always
         RestartSec=5
         StandardOutput=journal

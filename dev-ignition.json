@@ -11,7 +11,7 @@
         ],
         "name": "core",
         "sshAuthorizedKeys": [
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... your-ssh-key-here"
+          "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDBYStXBOkMIJYcU0QYEyQG8D3icRyQSnOaxNTSxqeD44ocwgXhkEz1oXPosI0DbK+yqFItlvV6glhy17lxewnPn1dAT5jInDVPdaiwzAwxIJ3nOYUH8zzLezWgP56r+D9Zl+JOl44JMnMq5naio1A88xIWe0aixCY8QmVDc95z87OGkHwAWs1i8oEnDhdERRfyv8FbvcE9LLsG0HNnzcb58sczwhHgHi7QLwlfldQ4LcE5YUnxW4Io8I6juGORTdFaaFTfZpf0O69Zv0XsKIYgSHEvdGA7QJTTONvYRLB+O6vzJJaTTk2O3rrnFha0u19TLzHKBDIMOsIvtgzvXqbDArlNTgWOum9z1vq29yfyB3WjSxefyQfIq4jVdFsXD0yEjcGneH3eVAP3UsvFCF1Dh5LUF+P7jA5bMW/x2TOSATanVpyeiYAwL0kDnQVU7gXqfr1M4hhZjdfai+GXJ1uRG58r/xTxMkQBxGwRdvoWjyEJ1kT0uKJFZ0fEQtqTk+bL0MWUrzbvEqAygYjkT1PWZVgD8mPzUoZAnmZOoy72p09mlcvmSUQgNaZUjt9agrQzW8Mbe/8zd9O8jVAy+wcPuoJspuVDxwxu3mdRcK3NA7luJs4VwjsuLSJpQEkaP15RfDKHs4tf8BltiPGvs+ZxA8LgwOtFM55gv4V0fPmyXw== janbronicki@DESKTOP-SNSADQ2"
         ]
       }
     ]
@@ -20,6 +20,10 @@
     "directories": [
       {
         "path": "/opt/nextcloud",
+        "mode": 493
+      },
+      {
+        "path": "/opt/bin",
         "mode": 493
       },
       {
@@ -53,7 +57,7 @@
         "mode": 420
       },
       {
-        "path": "/usr/local/bin/generate-dev-ssl.sh",
+        "path": "/opt/bin/generate-dev-ssl.sh",
         "contents": {
           "compression": "gzip",
           "source": "data:;base64,H4sIAAAAAAAC/3yRUU/CMBSF3/srrsUnYtuBbgaSPRhIDMmCxumbiSnrhc117VwLsn9vZgYID7719J72fDl3cCVWhREr6XIygEc02EiP4FCvmSs2BhWkaQIZNr5YF5n06GBtG1C4Q23rCo0nJE2Tj/niJabC1l4Y3PtM260SzmlKqlIVDbAa6HXvo4RgllugfVxhNv8FXuZxzimxNRrnNDT4BWwfBhNgBr9LbKFxcnoXTCJgLpfjMAKmZOvgNgqBGavQwTsBAGAltnbrT1iixJbXWNGD4XzaEZ2N3Xb1CVTM4rdUpK/xHHciiRObSS2eOnXgFbNlrLvr3Dp/fC2Vwr0H2v2CmX/QfikrjOfLdHo033RqyE968Twdje95wAM++hXdacxHISUkyyurIAqCP0WLYUfct31Z66ZftgLp4bSbnwAAAP//OneVLBICAAA="
@@ -61,7 +65,7 @@
         "mode": 493
       },
       {
-        "path": "/usr/local/bin/nextcloud-logs.sh",
+        "path": "/opt/bin/nextcloud-logs.sh",
         "contents": {
           "compression": "",
           "source": "data:;base64,IyEvYmluL2Jhc2gKY2QgL29wdC9uZXh0Y2xvdWQKZG9ja2VyLWNvbXBvc2UgbG9ncyAtZiAiJEAiCg=="
@@ -69,7 +73,7 @@
         "mode": 493
       },
       {
-        "path": "/usr/local/bin/nextcloud-shell.sh",
+        "path": "/opt/bin/nextcloud-shell.sh",
         "contents": {
           "compression": "",
           "source": "data:,%23!%2Fbin%2Fbash%0Acd%20%2Fopt%2Fnextcloud%0Adocker-compose%20exec%20nextcloud%20bash%0A"
@@ -77,7 +81,7 @@
         "mode": 493
       },
       {
-        "path": "/usr/local/bin/nextcloud-occ.sh",
+        "path": "/opt/bin/nextcloud-occ.sh",
         "contents": {
           "compression": "",
           "source": "data:;base64,IyEvYmluL2Jhc2gKY2QgL29wdC9uZXh0Y2xvdWQKZG9ja2VyLWNvbXBvc2UgZXhlYyAtdSB3d3ctZGF0YSBuZXh0Y2xvdWQgcGhwIG9jYyAiJEAiCg=="
@@ -85,7 +89,7 @@
         "mode": 493
       },
       {
-        "path": "/usr/local/bin/nextcloud-reset.sh",
+        "path": "/opt/bin/nextcloud-reset.sh",
         "contents": {
           "compression": "gzip",
           "source": "data:;base64,H4sIAAAAAAAC/1yQQU/jMBCF7/4Vr+llN7uJ01vV26orIS4VqhCcU3tKLFyP5Zm08O9RAqUSZ3/f83uzXNhDSPbQy2CW2JOQYkdv6iKPHkcu8HSmyPlESfHr+d9+d7+72+A/iRZ+F/QxwvfaL34bQ25gVN/M4xAElzABn/QM39JnrfqyHgqJYKsl/tlCGa5PjuJfcMGlD4pVByHHycv8yklDGqlt28pIJMpYdcY4D8tZbbr+YTy7VyqN41NmIXi+JDRnU05oynFuYOsp7RhebA1/sDUK+SC2/qmOGY2/bryNKPPJJiiSUounIEExqOaNtZFdHwcW3ay7dTcVn+Axt5X5CAAA///XDWuneQEAAA=="
@@ -101,17 +105,26 @@
         "name": "docker.service"
       },
       {
-        "contents": "[Unit]\nDescription=Setup Nextcloud Development Environment\nAfter=docker.service\nBefore=nextcloud-dev.service\nConditionFirstBoot=true\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/mkdir -p /opt/nextcloud/data /opt/nextcloud/config /opt/nextcloud/apps\nExecStart=/bin/mkdir -p /opt/nextcloud/db /opt/nextcloud/redis /opt/nextcloud/ssl\nExecStart=/usr/local/bin/generate-dev-ssl.sh\nExecStart=/bin/chown -R core:core /opt/nextcloud\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nDescription=Download Docker Compose binary\nAfter=network-online.target\nWants=network-online.target\nConditionFirstBoot=true\nConditionPathExists=!/opt/bin/docker-compose\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/mkdir -p /opt/bin\nExecStart=/bin/bash -c 'curl -L --connect-timeout 30 --max-time 300 -o /opt/bin/docker-compose \"https://github.com/docker/compose/releases/download/v2.36.2/docker-compose-$(uname -s)-$(uname -m)\"'\nExecStart=/bin/chmod +x /opt/bin/docker-compose\nTimeoutStartSec=360\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "docker-compose-setup.service"
+      },
+      {
+        "enabled": true,
+        "name": "systemd-sysext.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=Setup Nextcloud Development Environment\nAfter=docker.service\nBefore=nextcloud-dev.service\nConditionFirstBoot=true\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/mkdir -p /opt/nextcloud/data /opt/nextcloud/config /opt/nextcloud/apps\nExecStart=/bin/mkdir -p /opt/nextcloud/db /opt/nextcloud/redis /opt/nextcloud/ssl\nExecStart=/opt/bin/generate-dev-ssl.sh\nExecStart=/bin/chown -R core:core /opt/nextcloud\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
         "name": "setup-nextcloud-dev.service"
       },
       {
-        "contents": "[Unit]\nDescription=Nextcloud Development Docker Compose Stack\nAfter=setup-nextcloud-dev.service\nRequires=docker.service setup-nextcloud-dev.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nWorkingDirectory=/opt/nextcloud\nUser=core\nGroup=core\n\n# Always pull latest images in development\nExecStartPre=/usr/bin/docker-compose pull\nExecStartPre=-/usr/bin/docker-compose down\nExecStart=/usr/bin/docker-compose up -d\nExecReload=/usr/bin/docker-compose restart\nExecStop=/usr/bin/docker-compose down\n\n# Auto-restart on failure\nRestart=on-failure\nRestartSec=10\nTimeoutStartSec=180\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nDescription=Nextcloud Development Docker Compose Stack\nAfter=setup-nextcloud-dev.service docker-compose-setup.service\nRequires=docker.service setup-nextcloud-dev.service docker-compose-setup.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nWorkingDirectory=/opt/nextcloud\nUser=core\nGroup=core\nEnvironment=PATH=/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin\n\n# Always pull latest images in development\nExecStartPre=/opt/bin/docker-compose pull\nExecStartPre=-/opt/bin/docker-compose down\nExecStart=/opt/bin/docker-compose up -d\nExecReload=/opt/bin/docker-compose restart\nExecStop=/opt/bin/docker-compose down\n\n# Auto-restart on failure\nRestart=on-failure\nRestartSec=10\nTimeoutStartSec=180\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
         "name": "nextcloud-dev.service"
       },
       {
-        "contents": "[Unit]\nDescription=Nextcloud Development Log Viewer\nAfter=nextcloud-dev.service\n\n[Service]\nType=simple\nUser=core\nGroup=core\nWorkingDirectory=/opt/nextcloud\nExecStart=/usr/bin/docker-compose logs -f\nRestart=always\nRestartSec=5\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
+        "contents": "[Unit]\nDescription=Nextcloud Development Log Viewer\nAfter=nextcloud-dev.service\n\n[Service]\nType=simple\nUser=core\nGroup=core\nWorkingDirectory=/opt/nextcloud\nEnvironment=PATH=/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin\nExecStart=/opt/bin/docker-compose logs -f\nRestart=always\nRestartSec=5\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
         "enabled": true,
         "name": "nextcloud-dev-logs.service"
       },
