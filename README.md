@@ -1,5 +1,7 @@
 # Nextcloud on Flatcar Container Linux
 
+[![YAML Validation](https://github.com/your-username/flatcar-app-nextcloud/actions/workflows/validate-yaml.yml/badge.svg)](https://github.com/your-username/flatcar-app-nextcloud/actions/workflows/validate-yaml.yml)
+
 A comprehensive, production-ready Nextcloud deployment on Flatcar Container Linux with PostgreSQL, Redis, and Nginx. This setup provides both cloud-ready production configuration and local development environment.
 
 ## 🏗️ Architecture Overview
@@ -90,11 +92,17 @@ flatcar-app-nextcloud/
 ├── nextcloud-production.yaml      # Cloud-ready Flatcar configuration
 ├── nextcloud-development.yaml     # Local development configuration
 ├── flatcar_production_qemu.sh     # Enhanced VM launcher with port forwarding
+├── Makefile                       # Convenient development commands
+├── .github/workflows/             # GitHub Actions CI/CD pipelines
+│   └── validate-yaml.yml          # YAML validation workflow
+├── .yamllint.yml                  # YAML linting configuration
 ├── nginx/
 │   └── nextcloud.conf             # Optimized Nginx reverse proxy config
 └── scripts/
     ├── backup.sh                  # Automated backup script
-    └── update.sh                  # System and container update script
+    ├── update.sh                  # System and container update script
+    ├── validate-yaml.sh           # Comprehensive YAML validation script
+    └── validate-basic.sh          # Basic validation (no external deps)
 ```
 
 ## 🔧 Configuration Details
@@ -149,7 +157,62 @@ flatcar-app-nextcloud/
 - **Regular backups**: Automated backup scripts included
 - **Database encryption**: PostgreSQL supports encryption at rest
 
-## 🚀 Deployment Guide
+## � CI/CD and Validation
+
+This project includes comprehensive automated validation to ensure all configurations are error-free and secure.
+
+### GitHub Actions Workflow
+
+Every push and pull request triggers automated validation:
+
+- **YAML Syntax Validation**: Validates all `.yaml` and `.yml` files for syntax errors
+- **Docker Compose Validation**: Ensures docker-compose.yml is valid and can be parsed
+- **Flatcar Configuration Validation**: Uses Butane to validate Flatcar YAML configurations
+- **Style Linting**: Enforces consistent YAML formatting and style
+- **Security Scanning**: Scans configurations for potential security issues
+- **Ignition Generation**: Generates and validates Ignition files as artifacts
+
+### Local Validation
+
+Before pushing changes, run local validation:
+
+```bash
+# Quick and easy validation with Makefile
+make validate              # Basic validation (minimal dependencies)
+make validate-full         # Comprehensive validation (all tools required)
+make docker-validate       # Docker Compose only
+
+# Or run scripts directly:
+./scripts/validate-basic.sh       # Basic validation (minimal dependencies)
+./scripts/validate-yaml.sh        # Comprehensive validation (all tools required)
+
+# Individual validations:
+yamllint -c .yamllint.yml *.yaml *.yml                           # YAML linting
+butane --pretty --strict nextcloud-production.yaml > /dev/null   # Flatcar validation
+docker-compose config --quiet                                    # Docker Compose validation
+```
+
+### Required Tools for Development
+
+```bash
+# Install yamllint for YAML validation
+pip install yamllint
+
+# Install Butane for Flatcar validation
+# See: https://coreos.github.io/butane/getting-started/
+
+# Ensure Docker Compose is available
+docker-compose version
+```
+
+### Validation Configuration
+
+- **`.yamllint.yml`**: Defines YAML linting rules (120 char lines, 2-space indents)
+- **GitHub Actions**: Automated workflows in `.github/workflows/validate-yaml.yml`
+- **Local Script**: `scripts/validate-yaml.sh` for pre-commit validation
+
+
+## �🚀 Deployment Guide
 
 ### Cloud Deployment (Production)
 
@@ -314,10 +377,21 @@ docker exec nextcloud_nginx openssl x509 -in /etc/ssl/certs/nextcloud.crt -text 
 ## 🤝 Contributing
 
 ### Development Workflow
-1. Test changes in development environment first
-2. Validate configurations with Butane
-3. Document architectural decisions in code comments
-4. Update this README with any new features
+1. **Fork and clone** the repository
+2. **Run local validation** before making changes: `./scripts/validate-yaml.sh`
+3. **Test changes** in development environment first
+4. **Validate configurations** with Butane: `butane --strict your-config.yaml`
+5. **Document architectural decisions** in code comments
+6. **Update README** with any new features or changes
+7. **Submit pull request** - CI will automatically validate your changes
+
+### CI/CD Pipeline
+All contributions are automatically validated through GitHub Actions:
+- ✅ YAML syntax and style validation
+- ✅ Docker Compose configuration validation  
+- ✅ Flatcar configuration validation with Butane
+- ✅ Security scanning with Trivy
+- ✅ Ignition file generation and testing
 
 ### Configuration Principles
 - **Security by default**: All configurations prioritize security

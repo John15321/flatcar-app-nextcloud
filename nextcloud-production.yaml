@@ -44,7 +44,6 @@ passwd:
   users:
     - name: nextcloud
       uid: 1000                    # Fixed UID for consistent ownership
-      gid: 1000                    # Fixed GID for consistent ownership
       home_dir: /home/nextcloud
       shell: /bin/bash
       groups:
@@ -141,7 +140,194 @@ storage:
       group:
         name: nextcloud
       contents:
-        local: docker-compose.yml
+        inline: |
+          # =========================================================================
+          # NEXTCLOUD DOCKER COMPOSE CONFIGURATION
+          # =========================================================================
+          #
+          # This Docker Compose file defines the complete Nextcloud stack with:
+          # - Nginx reverse proxy (SSL termination, static file serving)
+          # - Nextcloud application (PHP-FPM with extensions)
+          # - PostgreSQL 15 database (reliable, high-performance)
+          # - Redis cache (session storage, file locking, memory cache)
+          # - Adminer database management (development only)
+          #
+          # NETWORKING:
+          # All services communicate over a private Docker network for security.
+          # Only required ports are exposed to the host system.
+          #
+          # STORAGE:
+          # - PostgreSQL data: ./db (persistent database storage)
+          # - Nextcloud data: ./data (user files and uploads)
+          # - Nextcloud config: ./config (application configuration)
+          # - Custom apps: ./apps (additional Nextcloud applications)
+          # - SSL certificates: ./ssl (TLS certificates for HTTPS)
+          #
+          # ENVIRONMENT VARIABLES:
+          # Configuration is externalized via .env file for security and flexibility.
+          # This allows different settings for production vs development without
+          # changing the compose file.
+          #
+          # =========================================================================
+
+          version: '3.8'
+
+          services:
+            # -----------------------------------------------------------------------
+            # NGINX REVERSE PROXY
+            # -----------------------------------------------------------------------
+            # Handles HTTP/HTTPS traffic, SSL termination, and static file serving
+            # Benefits: Better performance, security headers, rate limiting
+            nginx:
+              image: nginx:alpine            # Lightweight, security-focused
+              container_name: nextcloud-nginx
+              restart: unless-stopped        # Auto-restart on failure
+              ports:
+                - "80:80"                    # HTTP traffic
+                - "443:443"                  # HTTPS traffic (SSL/TLS)
+              volumes:
+                - ./nginx/nextcloud.conf:/etc/nginx/nginx.conf:ro  # Nginx configuration
+                - ./ssl:/etc/nginx/ssl:ro    # SSL certificates directory
+                - nextcloud_data:/var/www/html:ro  # Nextcloud files (read-only)
+              depends_on:
+                - nextcloud                  # Start after Nextcloud is ready
+              networks:
+                - nextcloud-network
+
+            # -----------------------------------------------------------------------
+            # NEXTCLOUD APPLICATION
+            # -----------------------------------------------------------------------
+            # Main PHP application with all required extensions for Nextcloud
+            nextcloud:
+              image: nextcloud:latest        # Official Nextcloud image
+              container_name: nextcloud-app
+              restart: unless-stopped
+              ports:
+                - "8080:80"                  # Direct access for development/debugging
+              volumes:
+                - nextcloud_data:/var/www/html      # Main application files
+                - ./config:/var/www/html/config     # Configuration persistence
+                - ./data:/var/www/html/data         # User data and uploads
+                - ./apps:/var/www/html/custom_apps  # Custom applications
+              environment:
+                # Database connection settings
+                - POSTGRES_HOST=db
+                - POSTGRES_DB=${POSTGRES_DB}
+                - POSTGRES_USER=${POSTGRES_USER}
+                - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+                
+                # Nextcloud admin account
+                - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
+                - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+                - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
+                
+                # Redis cache configuration
+                - REDIS_HOST=redis
+                - REDIS_HOST_PORT=6379
+                
+                # HTTPS configuration (when behind reverse proxy)
+                - OVERWRITEPROTOCOL=https
+                - OVERWRITECLIURL=https://${NEXTCLOUD_DOMAIN}
+              depends_on:
+                - db                         # Database must be ready first
+                - redis                      # Cache must be available
+              networks:
+                - nextcloud-network
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost/status.php"]
+                interval: 30s                # Check every 30 seconds
+                timeout: 10s                 # 10 second timeout
+                retries: 3                   # Retry 3 times before marking unhealthy
+
+            # -----------------------------------------------------------------------
+            # POSTGRESQL DATABASE
+            # -----------------------------------------------------------------------
+            # Primary data store for Nextcloud with optimized settings
+            db:
+              image: postgres:15-alpine      # Latest stable PostgreSQL
+              container_name: nextcloud-db
+              restart: unless-stopped
+              ports:
+                - "5432:5432"                # Exposed for development/debugging
+              volumes:
+                - ./db:/var/lib/postgresql/data  # Persistent database storage
+              environment:
+                - POSTGRES_DB=${POSTGRES_DB}
+                - POSTGRES_USER=${POSTGRES_USER}
+                - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+                # Optimized initialization for UTF-8 and better performance
+                - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+              networks:
+                - nextcloud-network
+              healthcheck:
+                test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+
+            # -----------------------------------------------------------------------
+            # REDIS CACHE
+            # -----------------------------------------------------------------------
+            # In-memory cache for sessions, file locking, and application cache
+            redis:
+              image: redis:7-alpine          # Latest stable Redis
+              container_name: nextcloud-redis
+              restart: unless-stopped
+              ports:
+                - "6379:6379"                # Exposed for development/debugging
+              volumes:
+                - ./redis:/data              # Persistent Redis data (snapshots)
+              command: redis-server --save 60 1 --loglevel warning
+              # Save snapshot if at least 1 key changed in 60 seconds
+              networks:
+                - nextcloud-network
+              healthcheck:
+                test: ["CMD", "redis-cli", "ping"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+
+            # -----------------------------------------------------------------------
+            # ADMINER DATABASE MANAGEMENT (DEVELOPMENT ONLY)
+            # -----------------------------------------------------------------------
+            # Web-based database administration tool for development and debugging
+            # WARNING: Remove this service in production deployments for security
+            adminer:
+              image: adminer                 # Lightweight database management UI
+              container_name: nextcloud-adminer
+              restart: unless-stopped
+              ports:
+                - "8081:8080"                # Access at http://localhost:8081
+              environment:
+                - ADMINER_DEFAULT_SERVER=db  # Pre-select database server
+              depends_on:
+                - db                         # Database must be available
+              networks:
+                - nextcloud-network
+              # To access Adminer:
+              # URL: http://localhost:8081
+              # Server: db
+              # Username: nextcloud (or your POSTGRES_USER)
+              # Password: (your POSTGRES_PASSWORD)
+              # Database: nextcloud (or your POSTGRES_DB)
+
+          # =========================================================================
+          # DOCKER VOLUMES
+          # =========================================================================
+          # Named volumes for data that should persist across container restarts
+          volumes:
+            nextcloud_data:                 # Shared Nextcloud application files
+
+          # =========================================================================
+          # DOCKER NETWORKS
+          # =========================================================================
+          # Private network for inter-container communication
+          # Provides isolation from other Docker networks and the host
+          networks:
+            nextcloud-network:
+              driver: bridge                 # Standard Docker bridge network
+              # All containers can communicate with each other by name
+              # External access only through explicitly exposed ports
 
     # Nginx configuration
     - path: /opt/nextcloud/nginx/nextcloud.conf
@@ -151,7 +337,88 @@ storage:
       group:
         name: nextcloud
       contents:
-        local: nginx/nextcloud.conf
+        inline: |
+          events {
+              worker_connections 1024;
+          }
+
+          http {
+              include /etc/nginx/mime.types;
+              default_type application/octet-stream;
+              
+              # Basic Settings
+              sendfile on;
+              tcp_nopush on;
+              tcp_nodelay on;
+              keepalive_timeout 65;
+              client_max_body_size 16G;
+              
+              # Gzip Settings
+              gzip on;
+              gzip_vary on;
+              gzip_comp_level 6;
+              gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+              
+              upstream nextcloud {
+                  server nextcloud:80;
+              }
+              
+              # HTTP server (development friendly)
+              server {
+                  listen 80;
+                  server_name _;
+                  
+                  location / {
+                      proxy_pass http://nextcloud;
+                      proxy_set_header Host $host;
+                      proxy_set_header X-Real-IP $remote_addr;
+                      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                      proxy_set_header X-Forwarded-Proto $scheme;
+                      proxy_set_header X-Forwarded-Host $host;
+                      proxy_set_header X-Forwarded-Port $server_port;
+                  }
+              }
+              
+              # HTTPS server (with self-signed cert for development)
+              server {
+                  listen 443 ssl http2;
+                  server_name _;
+                  
+                  # SSL configuration (self-signed for development)
+                  ssl_certificate /etc/nginx/ssl/cert.pem;
+                  ssl_certificate_key /etc/nginx/ssl/key.pem;
+                  ssl_protocols TLSv1.2 TLSv1.3;
+                  ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
+                  ssl_prefer_server_ciphers off;
+                  
+                  # Basic security headers for development
+                  add_header X-Content-Type-Options "nosniff" always;
+                  add_header X-Frame-Options "SAMEORIGIN" always;
+                  add_header X-XSS-Protection "1; mode=block" always;
+                  
+                  # Remove X-Powered-By
+                  fastcgi_hide_header X-Powered-By;
+                  
+                  # set max upload size
+                  client_max_body_size 16G;
+                  fastcgi_buffers 64 4K;
+                  
+                  location / {
+                      proxy_pass http://nextcloud;
+                      proxy_set_header Host $host;
+                      proxy_set_header X-Real-IP $remote_addr;
+                      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                      proxy_set_header X-Forwarded-Proto https;
+                      proxy_set_header X-Forwarded-Host $host;
+                      proxy_set_header X-Forwarded-Port $server_port;
+                      
+                      # Timeouts
+                      proxy_connect_timeout 60s;
+                      proxy_send_timeout 60s;
+                      proxy_read_timeout 60s;
+                  }
+              }
+          }
 
     # Auto-discovery and setup script for cloud environments
     - path: /usr/local/bin/setup-nextcloud-storage.sh
@@ -392,6 +659,57 @@ storage:
               exit 1
           fi
 
+    # Log rotation configuration
+    - path: /etc/logrotate.d/nextcloud
+      mode: 0644
+      contents:
+        inline: |
+          /var/log/nextcloud/*.log {
+              daily
+              rotate 7
+              compress
+              delaycompress
+              missingok
+              notifempty
+              create 644 nextcloud nextcloud
+          }
+
+    # Sysctl optimizations for Nextcloud
+    - path: /etc/sysctl.d/99-nextcloud.conf
+      mode: 0644
+      contents:
+        inline: |
+          # Nextcloud performance optimizations
+          vm.swappiness=10
+          vm.dirty_ratio=15
+          vm.dirty_background_ratio=5
+          net.core.rmem_max=16777216
+          net.core.wmem_max=16777216
+          net.ipv4.tcp_rmem=4096 87380 16777216
+          net.ipv4.tcp_wmem=4096 65536 16777216
+
+    # Firewall configuration (using iptables)
+    - path: /etc/systemd/system/nextcloud-firewall.service
+      mode: 0644
+      contents:
+        inline: |
+          [Unit]
+          Description=Nextcloud Firewall Rules
+          Before=nextcloud.service
+          
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStart=/bin/bash -c 'iptables -A INPUT -p tcp --dport 22 -j ACCEPT'
+          ExecStart=/bin/bash -c 'iptables -A INPUT -p tcp --dport 80 -j ACCEPT'
+          ExecStart=/bin/bash -c 'iptables -A INPUT -p tcp --dport 443 -j ACCEPT'
+          ExecStart=/bin/bash -c 'iptables -A INPUT -i lo -j ACCEPT'
+          ExecStart=/bin/bash -c 'iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT'
+          ExecStart=/bin/bash -c 'iptables -P INPUT DROP'
+          
+          [Install]
+          WantedBy=multi-user.target
+
 systemd:
   units:
     # Enable Docker
@@ -536,6 +854,10 @@ systemd:
       mask: false
       enabled: true
 
+    # Firewall service
+    - name: nextcloud-firewall.service
+      enabled: true
+
     # Log rotation for Nextcloud logs
     - name: logrotate-nextcloud.service
       contents: |
@@ -559,60 +881,3 @@ systemd:
         
         [Install]
         WantedBy=timers.target
-
-  # Additional system configuration
-  files:
-    # Log rotation configuration
-    - path: /etc/logrotate.d/nextcloud
-      mode: 0644
-      contents:
-        inline: |
-          /var/log/nextcloud/*.log {
-              daily
-              rotate 7
-              compress
-              delaycompress
-              missingok
-              notifempty
-              create 644 nextcloud nextcloud
-          }
-
-    # Sysctl optimizations for Nextcloud
-    - path: /etc/sysctl.d/99-nextcloud.conf
-      mode: 0644
-      contents:
-        inline: |
-          # Nextcloud performance optimizations
-          vm.swappiness=10
-          vm.dirty_ratio=15
-          vm.dirty_background_ratio=5
-          net.core.rmem_max=16777216
-          net.core.wmem_max=16777216
-          net.ipv4.tcp_rmem=4096 87380 16777216
-          net.ipv4.tcp_wmem=4096 65536 16777216
-
-    # Firewall configuration (using iptables)
-    - path: /etc/systemd/system/nextcloud-firewall.service
-      mode: 0644
-      contents:
-        inline: |
-          [Unit]
-          Description=Nextcloud Firewall Rules
-          Before=nextcloud.service
-          
-          [Service]
-          Type=oneshot
-          RemainAfterExit=yes
-          ExecStart=/bin/bash -c 'iptables -A INPUT -p tcp --dport 22 -j ACCEPT'
-          ExecStart=/bin/bash -c 'iptables -A INPUT -p tcp --dport 80 -j ACCEPT'
-          ExecStart=/bin/bash -c 'iptables -A INPUT -p tcp --dport 443 -j ACCEPT'
-          ExecStart=/bin/bash -c 'iptables -A INPUT -i lo -j ACCEPT'
-          ExecStart=/bin/bash -c 'iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT'
-          ExecStart=/bin/bash -c 'iptables -P INPUT DROP'
-          
-          [Install]
-          WantedBy=multi-user.target
-
-    # Enable the firewall
-    - name: nextcloud-firewall.service
-      enabled: true

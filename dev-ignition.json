@@ -1,0 +1,125 @@
+{
+  "ignition": {
+    "version": "3.3.0"
+  },
+  "passwd": {
+    "users": [
+      {
+        "groups": [
+          "docker",
+          "sudo"
+        ],
+        "name": "core",
+        "sshAuthorizedKeys": [
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... your-ssh-key-here"
+        ]
+      }
+    ]
+  },
+  "storage": {
+    "directories": [
+      {
+        "path": "/opt/nextcloud",
+        "mode": 493
+      },
+      {
+        "path": "/var/log/nextcloud",
+        "mode": 493
+      }
+    ],
+    "files": [
+      {
+        "path": "/opt/nextcloud/.env",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/2xSwW6bQBC98xUj+ZJICTKOkjSVfHADSiwZQ1mstie0Ycf2qrCLdpaQ/n21EGLq9LTS2zfzZua9GYT4ipVualQWHrXay0NruJVawV4b2OKbLSvdCuikPUKqyR4Msu8bbwZM1k2FQGitVAfq+ZUueQUWyUHAlQBx6u95s0kHCLnlL5zwX1kvTVj+lEWsCL8t1Sh/Qncsyv6HpyvGfiRZuJwIFg0n6rQRTvm0ykrUUp0te0HDNm6J9/EvvW30M3/cJLuwWIXxejtoc1f96etDvv8OFjdOMtQ1/6x0utNk1KlYmMSr9XbZc46a7OQrz3Ysj0YKO3GugsW9P/fnfnAVuGfhB7dXwcPCD+6++IEfzOduoAyFJHjk5fH86lkUrlnxnLB8aRzpHUiTLF/e3dw/9OtMovLh+kWtDUKDppZE8hUvvfQ5LeIoTrJfxWYdr/Pl4vYu7tFduklW4TsaPJ333GqL9NWbwfWYrdG/IVzI6c9oTs9aq7JqBdLgKJqeJcZY1VzxA/bBc+TordGEAhpt7NBvcn6wWlfU8+K2stKJW9OSRQGid3EoeeVG6pZAoe20+e1CTiUqhw7VDKv9NcmDQgGMbaBEY+VeltwiQSerCuioO3gxuiM00HGj3Bm9vwEAAP//nea2GYkDAAA="
+        },
+        "mode": 384
+      },
+      {
+        "path": "/opt/nextcloud/docker-compose.yml",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,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"
+        },
+        "mode": 420
+      },
+      {
+        "path": "/opt/nextcloud/nginx/nextcloud.conf",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/+xWTXPiOBC98yu6MhxmDw6BECoVag+ZbCZJ7cxOKuaQm0qR2qBFllTqNuDZyn/fMubDEJJsTnsZDmC633vqbrVbwhk6JvinBQAw93GKUSjvHCo23hF0T3r9Yeu51ZowhxXMOGULjdBBVh03Nm7RyU2Ox1wGpOESojGThWVRmUCGYI2SlWDHK0ZOiCPKvIYuvz7BF0lGQYrMxo1paSR0OjMWwbsayioI50NBkz2TRivLjW2KGKQ1MxRscvQFw+Cs9ihr0LHI5UI8eV0KMj8RuoObnUhufpqwG8i4sqzVqz9iJmO5a1E+D8LiDC0MGuZlTYBxwZ1gpXH1oyLaqcrf5N2uQc4kqWgC14RFbnf8i9w2Yi5CXVBwuGBlfaFXO1VXMc4wbl0X5yc19bmZ9O1odL+GftZVGj7k6BiyaNBpW/7Waoht1a0hRgdrzS1GOJkjiK15S/F1EtBp6FSfEP2iFEESQdVtF53OJujhASAhiwlKjRFuPTG0J574HeBj8oDSJnf30I6Ye0YhtY7vkr76OJdRo66eoF0jpNZiIbK1q3r6gNB99OyhTWqCOX6A94FUG4v5yNBebUzwscF9PtwL6aYZ5oYnQGizhMzYoQaFkSHzERpt8nZ39PunQGSXu9r7743yCdL0GyjvMjMuYt0zn5uRHAxiqUxWVGGarHphdiYVke1UruOA+fA1gphiuU+aYvmSE6pdVN4SjL6ls+5xb/V7uidtwgQjwfXVH7fXyUN6mVxep93eeXJz9T1Jby97Z4OLHV/vbLD2nZ7399fEDKNYVW8t7bPsYAnruUqoimi4hLo5aL90G0LV1JsGuvKO0XEyKgMmP0J9Ihw5T85k2RFIO5clDQ9zv0aZN0jp5ffrHw93N3d/vcN7TNPlu1EfQHDUHULuNf7+ZL2avuQ2Mn3A3M8QHpN7P8eIOvlSbryZJFZjIyZG43atLfCgICFDLhdQBOulhuqw2HjfPkmaSz4VWVZVfNCH/p+/xuGb47DKk/7HYbizMXUTjOorBB3QX92TtreMk1did/o9TET5CmY9n59b/wYAAP//Eqk5I6sJAAA="
+        },
+        "mode": 420
+      },
+      {
+        "path": "/usr/local/bin/generate-dev-ssl.sh",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/3yRUU/CMBSF3/srrsUnYtuBbgaSPRhIDMmCxumbiSnrhc117VwLsn9vZgYID7719J72fDl3cCVWhREr6XIygEc02EiP4FCvmSs2BhWkaQIZNr5YF5n06GBtG1C4Q23rCo0nJE2Tj/niJabC1l4Y3PtM260SzmlKqlIVDbAa6HXvo4RgllugfVxhNv8FXuZxzimxNRrnNDT4BWwfBhNgBr9LbKFxcnoXTCJgLpfjMAKmZOvgNgqBGavQwTsBAGAltnbrT1iixJbXWNGD4XzaEZ2N3Xb1CVTM4rdUpK/xHHciiRObSS2eOnXgFbNlrLvr3Dp/fC2Vwr0H2v2CmX/QfikrjOfLdHo033RqyE968Twdje95wAM++hXdacxHISUkyyurIAqCP0WLYUfct31Z66ZftgLp4bSbnwAAAP//OneVLBICAAA="
+        },
+        "mode": 493
+      },
+      {
+        "path": "/usr/local/bin/nextcloud-logs.sh",
+        "contents": {
+          "compression": "",
+          "source": "data:;base64,IyEvYmluL2Jhc2gKY2QgL29wdC9uZXh0Y2xvdWQKZG9ja2VyLWNvbXBvc2UgbG9ncyAtZiAiJEAiCg=="
+        },
+        "mode": 493
+      },
+      {
+        "path": "/usr/local/bin/nextcloud-shell.sh",
+        "contents": {
+          "compression": "",
+          "source": "data:,%23!%2Fbin%2Fbash%0Acd%20%2Fopt%2Fnextcloud%0Adocker-compose%20exec%20nextcloud%20bash%0A"
+        },
+        "mode": 493
+      },
+      {
+        "path": "/usr/local/bin/nextcloud-occ.sh",
+        "contents": {
+          "compression": "",
+          "source": "data:;base64,IyEvYmluL2Jhc2gKY2QgL29wdC9uZXh0Y2xvdWQKZG9ja2VyLWNvbXBvc2UgZXhlYyAtdSB3d3ctZGF0YSBuZXh0Y2xvdWQgcGhwIG9jYyAiJEAiCg=="
+        },
+        "mode": 493
+      },
+      {
+        "path": "/usr/local/bin/nextcloud-reset.sh",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/1yQQU/jMBCF7/4Vr+llN7uJ01vV26orIS4VqhCcU3tKLFyP5Zm08O9RAqUSZ3/f83uzXNhDSPbQy2CW2JOQYkdv6iKPHkcu8HSmyPlESfHr+d9+d7+72+A/iRZ+F/QxwvfaL34bQ25gVN/M4xAElzABn/QM39JnrfqyHgqJYKsl/tlCGa5PjuJfcMGlD4pVByHHycv8yklDGqlt28pIJMpYdcY4D8tZbbr+YTy7VyqN41NmIXi+JDRnU05oynFuYOsp7RhebA1/sDUK+SC2/qmOGY2/bryNKPPJJiiSUounIEExqOaNtZFdHwcW3ay7dTcVn+Axt5X5CAAA///XDWuneQEAAA=="
+        },
+        "mode": 493
+      }
+    ]
+  },
+  "systemd": {
+    "units": [
+      {
+        "enabled": true,
+        "name": "docker.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=Setup Nextcloud Development Environment\nAfter=docker.service\nBefore=nextcloud-dev.service\nConditionFirstBoot=true\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/mkdir -p /opt/nextcloud/data /opt/nextcloud/config /opt/nextcloud/apps\nExecStart=/bin/mkdir -p /opt/nextcloud/db /opt/nextcloud/redis /opt/nextcloud/ssl\nExecStart=/usr/local/bin/generate-dev-ssl.sh\nExecStart=/bin/chown -R core:core /opt/nextcloud\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "setup-nextcloud-dev.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=Nextcloud Development Docker Compose Stack\nAfter=setup-nextcloud-dev.service\nRequires=docker.service setup-nextcloud-dev.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nWorkingDirectory=/opt/nextcloud\nUser=core\nGroup=core\n\n# Always pull latest images in development\nExecStartPre=/usr/bin/docker-compose pull\nExecStartPre=-/usr/bin/docker-compose down\nExecStart=/usr/bin/docker-compose up -d\nExecReload=/usr/bin/docker-compose restart\nExecStop=/usr/bin/docker-compose down\n\n# Auto-restart on failure\nRestart=on-failure\nRestartSec=10\nTimeoutStartSec=180\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "nextcloud-dev.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=Nextcloud Development Log Viewer\nAfter=nextcloud-dev.service\n\n[Service]\nType=simple\nUser=core\nGroup=core\nWorkingDirectory=/opt/nextcloud\nExecStart=/usr/bin/docker-compose logs -f\nRestart=always\nRestartSec=5\nStandardOutput=journal\nStandardError=journal\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "nextcloud-dev-logs.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=Show Nextcloud Development URLs\nAfter=nextcloud-dev.service\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/bash -c 'sleep 30'\nExecStart=/bin/bash -c 'echo \"=== Nextcloud Development URLs ===\"'\nExecStart=/bin/bash -c 'echo \"Main Nextcloud: http://localhost:8080\"'\nExecStart=/bin/bash -c 'echo \"Via proxy: https://localhost (self-signed cert)\"'\nExecStart=/bin/bash -c 'echo \"Database admin: http://localhost:8081\"'\nExecStart=/bin/bash -c 'echo \"Default admin: admin / admin123\"'\nExecStart=/bin/bash -c 'echo \"==================================\"'\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "nextcloud-dev-info.service"
+      }
+    ]
+  }
+}

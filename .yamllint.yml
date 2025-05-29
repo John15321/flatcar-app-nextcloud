@@ -1,0 +1,52 @@
+# yamllint configuration for Flatcar Nextcloud project
+# This configuration balances strict validation with practical flexibility
+
+extends: relaxed
+
+rules:
+  # Line length - allow longer lines for readability in documentation
+  line-length:
+    max: 120
+    level: warning
+
+  # Indentation - enforce 2-space indentation
+  indentation:
+    spaces: 2
+    indent-sequences: true
+
+  # Truthy values - allow common variations
+  truthy:
+    allowed-values: ['true', 'false', 'on', 'off', 'yes', 'no']
+
+  # Comments - require at least 1 space after #
+  comments:
+    min-spaces-from-content: 1
+
+  # Document markers - disable for Flatcar configs
+  document-start: disable
+  document-end: disable
+
+  # Empty lines - allow flexible spacing for readability
+  empty-lines:
+    max: 2
+    max-start: 1
+    max-end: 1
+
+  # Brackets - consistent spacing
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # Commas - require space after commas
+  commas:
+    max-spaces-before: 0
+    min-spaces-after: 1
+    max-spaces-after: 1
+
+  # Key duplicates - error on duplicate keys
+  key-duplicates: enable
+
+  # Octal values - warn about potentially confusing octal notation
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
