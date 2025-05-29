@@ -1,68 +1,118 @@
+# =========================================================================
+# NEXTCLOUD DOCKER COMPOSE CONFIGURATION
+# =========================================================================
+#
+# This Docker Compose file defines the complete Nextcloud stack with:
+# - Nginx reverse proxy (SSL termination, static file serving)
+# - Nextcloud application (PHP-FPM with extensions)
+# - PostgreSQL 15 database (reliable, high-performance)
+# - Redis cache (session storage, file locking, memory cache)
+# - Adminer database management (development only)
+#
+# NETWORKING:
+# All services communicate over a private Docker network for security.
+# Only required ports are exposed to the host system.
+#
+# STORAGE:
+# - PostgreSQL data: ./db (persistent database storage)
+# - Nextcloud data: ./data (user files and uploads)
+# - Nextcloud config: ./config (application configuration)
+# - Custom apps: ./apps (additional Nextcloud applications)
+# - SSL certificates: ./ssl (TLS certificates for HTTPS)
+#
+# ENVIRONMENT VARIABLES:
+# Configuration is externalized via .env file for security and flexibility.
+# This allows different settings for production vs development without
+# changing the compose file.
+#
+# =========================================================================
+
 version: '3.8'
 
 services:
+  # -----------------------------------------------------------------------
+  # NGINX REVERSE PROXY
+  # -----------------------------------------------------------------------
+  # Handles HTTP/HTTPS traffic, SSL termination, and static file serving
+  # Benefits: Better performance, security headers, rate limiting
   nginx:
-    image: nginx:alpine
+    image: nginx:alpine            # Lightweight, security-focused
     container_name: nextcloud-nginx
-    restart: unless-stopped
+    restart: unless-stopped        # Auto-restart on failure
     ports:
-      - "80:80"
-      - "443:443"
+      - "80:80"                    # HTTP traffic
+      - "443:443"                  # HTTPS traffic (SSL/TLS)
     volumes:
-      - ./nginx/nextcloud.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-      - nextcloud_data:/var/www/html:ro
+      - ./nginx/nextcloud.conf:/etc/nginx/nginx.conf:ro  # Nginx configuration
+      - ./ssl:/etc/nginx/ssl:ro    # SSL certificates directory
+      - nextcloud_data:/var/www/html:ro  # Nextcloud files (read-only)
     depends_on:
-      - nextcloud
+      - nextcloud                  # Start after Nextcloud is ready
     networks:
       - nextcloud-network
 
+  # -----------------------------------------------------------------------
+  # NEXTCLOUD APPLICATION
+  # -----------------------------------------------------------------------
+  # Main PHP application with all required extensions for Nextcloud
   nextcloud:
-    image: nextcloud:latest
+    image: nextcloud:latest        # Official Nextcloud image
     container_name: nextcloud-app
     restart: unless-stopped
     ports:
-      - "8080:80"  # Direct access for development
+      - "8080:80"                  # Direct access for development/debugging
     volumes:
-      - nextcloud_data:/var/www/html
-      - ./config:/var/www/html/config
-      - ./data:/var/www/html/data
-      - ./apps:/var/www/html/custom_apps
+      - nextcloud_data:/var/www/html      # Main application files
+      - ./config:/var/www/html/config     # Configuration persistence
+      - ./data:/var/www/html/data         # User data and uploads
+      - ./apps:/var/www/html/custom_apps  # Custom applications
     environment:
+      # Database connection settings
       - POSTGRES_HOST=db
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      
+      # Nextcloud admin account
       - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
       - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
       - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
+      
+      # Redis cache configuration
       - REDIS_HOST=redis
       - REDIS_HOST_PORT=6379
+      
+      # HTTPS configuration (when behind reverse proxy)
       - OVERWRITEPROTOCOL=https
       - OVERWRITECLIURL=https://${NEXTCLOUD_DOMAIN}
     depends_on:
-      - db
-      - redis
+      - db                         # Database must be ready first
+      - redis                      # Cache must be available
     networks:
       - nextcloud-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/status.php"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 30s                # Check every 30 seconds
+      timeout: 10s                 # 10 second timeout
+      retries: 3                   # Retry 3 times before marking unhealthy
 
+  # -----------------------------------------------------------------------
+  # POSTGRESQL DATABASE
+  # -----------------------------------------------------------------------
+  # Primary data store for Nextcloud with optimized settings
   db:
-    image: postgres:15-alpine
+    image: postgres:15-alpine      # Latest stable PostgreSQL
     container_name: nextcloud-db
     restart: unless-stopped
     ports:
-      - "5432:5432"  # Exposed for development/debugging
+      - "5432:5432"                # Exposed for development/debugging
     volumes:
-      - ./db:/var/lib/postgresql/data
+      - ./db:/var/lib/postgresql/data  # Persistent database storage
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      # Optimized initialization for UTF-8 and better performance
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
     networks:
       - nextcloud-network
@@ -72,15 +122,20 @@ services:
       timeout: 10s
       retries: 3
 
+  # -----------------------------------------------------------------------
+  # REDIS CACHE
+  # -----------------------------------------------------------------------
+  # In-memory cache for sessions, file locking, and application cache
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine          # Latest stable Redis
     container_name: nextcloud-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"  # Exposed for development/debugging
+      - "6379:6379"                # Exposed for development/debugging
     volumes:
-      - ./redis:/data
+      - ./redis:/data              # Persistent Redis data (snapshots)
     command: redis-server --save 60 1 --loglevel warning
+    # Save snapshot if at least 1 key changed in 60 seconds
     networks:
       - nextcloud-network
     healthcheck:
@@ -89,23 +144,44 @@ services:
       timeout: 10s
       retries: 3
 
-  # Development tools
+  # -----------------------------------------------------------------------
+  # ADMINER DATABASE MANAGEMENT (DEVELOPMENT ONLY)
+  # -----------------------------------------------------------------------
+  # Web-based database administration tool for development and debugging
+  # WARNING: Remove this service in production deployments for security
   adminer:
-    image: adminer
+    image: adminer                 # Lightweight database management UI
     container_name: nextcloud-adminer
     restart: unless-stopped
     ports:
-      - "8081:8080"
+      - "8081:8080"                # Access at http://localhost:8081
     environment:
-      - ADMINER_DEFAULT_SERVER=db
+      - ADMINER_DEFAULT_SERVER=db  # Pre-select database server
     depends_on:
-      - db
+      - db                         # Database must be available
     networks:
       - nextcloud-network
+    # To access Adminer:
+    # URL: http://localhost:8081
+    # Server: db
+    # Username: nextcloud (or your POSTGRES_USER)
+    # Password: (your POSTGRES_PASSWORD)
+    # Database: nextcloud (or your POSTGRES_DB)
 
+# =========================================================================
+# DOCKER VOLUMES
+# =========================================================================
+# Named volumes for data that should persist across container restarts
 volumes:
-  nextcloud_data:
+  nextcloud_data:                 # Shared Nextcloud application files
 
+# =========================================================================
+# DOCKER NETWORKS
+# =========================================================================
+# Private network for inter-container communication
+# Provides isolation from other Docker networks and the host
 networks:
   nextcloud-network:
-    driver: bridge
+    driver: bridge                 # Standard Docker bridge network
+    # All containers can communicate with each other by name
+    # External access only through explicitly exposed ports

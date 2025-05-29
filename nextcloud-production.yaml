@@ -1,0 +1,618 @@
+# =========================================================================
+# NEXTCLOUD PRODUCTION CONFIGURATION FOR FLATCAR CONTAINER LINUX
+# =========================================================================
+#
+# This Butane configuration creates a production-ready Nextcloud deployment
+# suitable for cloud environments (AWS, GCP, Azure, etc.) with:
+#
+# ARCHITECTURE:
+# - Nextcloud (latest) with PostgreSQL 15 and Redis 7
+# - Nginx reverse proxy with SSL/TLS support
+# - Automatic storage detection and formatting
+# - Security-hardened configuration
+#
+# SECURITY FEATURES:
+# - Dedicated nextcloud user (non-root)
+# - Strong password requirements (MUST CHANGE defaults)
+# - Minimal exposed ports (80/443 only)
+# - SSL-ready Nginx configuration
+#
+# CLOUD FEATURES:
+# - Auto-detects additional disks
+# - Cloud-init compatible
+# - Labeled partition support
+# - Systemd service management
+#
+# BEFORE DEPLOYMENT:
+# 1. Replace "your-ssh-key-here" with your actual SSH public key
+# 2. Change ALL passwords in the environment section
+# 3. Update NEXTCLOUD_DOMAIN with your actual domain
+# 4. Ensure you have an additional disk for data storage
+#
+# CONVERSION TO IGNITION:
+# butane --pretty --strict nextcloud-production.yaml > nextcloud.ign
+#
+# =========================================================================
+
+variant: flatcar
+version: 1.0.0
+
+# USER CONFIGURATION
+# Creates a dedicated 'nextcloud' user for security isolation
+# This user owns all Nextcloud processes and data
+passwd:
+  users:
+    - name: nextcloud
+      uid: 1000                    # Fixed UID for consistent ownership
+      gid: 1000                    # Fixed GID for consistent ownership
+      home_dir: /home/nextcloud
+      shell: /bin/bash
+      groups:
+        - docker                   # Access to Docker daemon
+        - sudo                     # Administrative privileges when needed
+      ssh_authorized_keys:
+        - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... your-ssh-key-here"
+        # Add your public SSH key above - generate with: ssh-keygen -t ed25519
+        # This is the ONLY way to access the system - no password login
+
+storage:
+  # FILESYSTEM CONFIGURATION
+  # Automatically detects and mounts additional storage for Nextcloud data
+  # This separates application data from the OS partition
+  filesystems:
+    - device: /dev/disk/by-label/NEXTCLOUD_DATA
+      path: /var/lib/nextcloud     # Mount point for all Nextcloud data
+      format: ext4                 # Reliable filesystem for production
+      with_mount_unit: true        # Creates systemd mount unit
+      wipe_filesystem: false       # Don't destroy existing data
+      label: NEXTCLOUD_DATA        # Label for easy identification
+
+  # DIRECTORY STRUCTURE
+  # Creates the necessary directory hierarchy with proper ownership
+  directories:
+    # Main application directory
+    - path: /opt/nextcloud
+      mode: 0755
+      user:
+        name: nextcloud
+      group:
+        name: nextcloud
+    - path: /var/lib/nextcloud
+      mode: 0755
+      user:
+        name: nextcloud
+      group:
+        name: nextcloud
+    # SSL certificates directory
+    - path: /etc/ssl/nextcloud
+      mode: 0700
+      user:
+        name: nextcloud
+      group:
+        name: nextcloud
+    # Logs directory
+    - path: /var/log/nextcloud
+      mode: 0755
+      user:
+        name: nextcloud
+      group:
+        name: nextcloud
+
+  files:
+    # Environment configuration
+    - path: /opt/nextcloud/.env
+      mode: 0600
+      user:
+        name: nextcloud
+      group:
+        name: nextcloud
+      contents:
+        inline: |
+          # Production Configuration for Nextcloud with PostgreSQL
+          # SECURITY: Change ALL passwords before deployment!
+          
+          # PostgreSQL Database Configuration
+          POSTGRES_DB=nextcloud
+          POSTGRES_USER=nextcloud
+          POSTGRES_PASSWORD=CHANGE_ME_STRONG_DB_PASSWORD
+          
+          # Nextcloud Admin Configuration
+          NEXTCLOUD_ADMIN_USER=admin
+          NEXTCLOUD_ADMIN_PASSWORD=CHANGE_ME_STRONG_ADMIN_PASSWORD
+          
+          # Domain Configuration - UPDATE THESE FOR YOUR DOMAIN
+          NEXTCLOUD_DOMAIN=your-domain.com
+          NEXTCLOUD_TRUSTED_DOMAINS=your-domain.com,subdomain.your-domain.com
+          
+          # Redis Cache Configuration
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+          
+          # Performance settings for production
+          PHP_MEMORY_LIMIT=512M
+          PHP_UPLOAD_LIMIT=16G
+          PHP_MAX_EXECUTION_TIME=3600
+
+    # Docker Compose configuration
+    - path: /opt/nextcloud/docker-compose.yml
+      mode: 0644
+      user:
+        name: nextcloud
+      group:
+        name: nextcloud
+      contents:
+        local: docker-compose.yml
+
+    # Nginx configuration
+    - path: /opt/nextcloud/nginx/nextcloud.conf
+      mode: 0644
+      user:
+        name: nextcloud
+      group:
+        name: nextcloud
+      contents:
+        local: nginx/nextcloud.conf
+
+    # Auto-discovery and setup script for cloud environments
+    - path: /usr/local/bin/setup-nextcloud-storage.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Nextcloud Storage Setup Script
+          # Automatically detects and configures storage for cloud environments
+          
+          set -euo pipefail
+          
+          LOG_FILE="/var/log/nextcloud/storage-setup.log"
+          mkdir -p "$(dirname "$LOG_FILE")"
+          
+          log() {
+              echo "$(date '+%Y-%m-%d %H:%M:%S'): $*" | tee -a "$LOG_FILE"
+          }
+          
+          log "Starting Nextcloud storage setup"
+          
+          # Wait for cloud-init to complete if available
+          if command -v cloud-init >/dev/null; then
+              log "Waiting for cloud-init to complete..."
+              cloud-init status --wait 2>/dev/null || true
+          fi
+          
+          # Look for additional disks (excluding boot disk)
+          BOOT_DISK=$(lsblk -dpn -o NAME,MOUNTPOINT | awk '$2=="/" {print $1}' | sed 's/[0-9]*$//')
+          AVAILABLE_DISKS=$(lsblk -dpn -o NAME,TYPE | grep -w disk | awk '$1!="'$BOOT_DISK'" {print $1}')
+          
+          if [ -n "$AVAILABLE_DISKS" ]; then
+              DATA_DISK=$(echo "$AVAILABLE_DISKS" | head -n1)
+              log "Found additional disk: $DATA_DISK"
+              
+              # Check if already formatted with our label
+              if ! blkid -L NEXTCLOUD_DATA >/dev/null 2>&1; then
+                  log "Formatting disk $DATA_DISK with ext4 filesystem"
+                  mkfs.ext4 -F -L NEXTCLOUD_DATA "$DATA_DISK"
+              else
+                  log "Disk already formatted with NEXTCLOUD_DATA label"
+              fi
+          else
+              log "No additional disk found, will use root filesystem"
+              # Create the mount point and label for consistency
+              mkdir -p /var/lib/nextcloud
+              # Create a simple marker file
+              touch /var/lib/nextcloud/.using-root-filesystem
+          fi
+          
+          log "Storage setup completed"
+
+    # SSL certificate management script
+    - path: /usr/local/bin/setup-ssl.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # SSL Certificate Setup
+          # Supports Let's Encrypt (certbot) and self-signed certificates
+          
+          set -euo pipefail
+          
+          SSL_DIR="/etc/ssl/nextcloud"
+          DOMAIN="${NEXTCLOUD_DOMAIN:-localhost}"
+          LOG_FILE="/var/log/nextcloud/ssl-setup.log"
+          
+          log() {
+              echo "$(date '+%Y-%m-%d %H:%M:%S'): $*" | tee -a "$LOG_FILE"
+          }
+          
+          # Source environment if available
+          if [ -f /opt/nextcloud/.env ]; then
+              set -a
+              source /opt/nextcloud/.env
+              set +a
+          fi
+          
+          log "Setting up SSL certificates for domain: $DOMAIN"
+          
+          # Check if certbot is available and we have a real domain
+          if command -v certbot >/dev/null && [[ "$DOMAIN" != "localhost" ]] && [[ "$DOMAIN" != "127.0.0.1" ]]; then
+              log "Attempting to get Let's Encrypt certificate"
+              # Stop nginx temporarily for standalone mode
+              systemctl stop nextcloud-nginx 2>/dev/null || true
+              
+              if certbot certonly --standalone \
+                  --non-interactive \
+                  --agree-tos \
+                  --email admin@"$DOMAIN" \
+                  -d "$DOMAIN" \
+                  --cert-path "$SSL_DIR/cert.pem" \
+                  --key-path "$SSL_DIR/key.pem"; then
+                  log "Let's Encrypt certificate obtained successfully"
+              else
+                  log "Let's Encrypt failed, falling back to self-signed certificate"
+                  generate_self_signed
+              fi
+          else
+              log "Generating self-signed certificate for development/testing"
+              generate_self_signed
+          fi
+          
+          # Set proper permissions
+          chown -R nextcloud:nextcloud "$SSL_DIR"
+          chmod 600 "$SSL_DIR"/*.pem
+          
+          log "SSL setup completed"
+          
+          generate_self_signed() {
+              openssl req -x509 -newkey rsa:4096 -sha256 -days 365 -nodes \
+                  -keyout "$SSL_DIR/key.pem" \
+                  -out "$SSL_DIR/cert.pem" \
+                  -subj "/C=US/ST=State/L=City/O=Organization/CN=$DOMAIN" \
+                  -addext "subjectAltName=DNS:$DOMAIN,DNS:www.$DOMAIN,IP:127.0.0.1"
+          }
+
+    # Backup script
+    - path: /usr/local/bin/backup-nextcloud.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Nextcloud Backup Script
+          # Performs database and data backups with retention management
+          
+          set -euo pipefail
+          
+          BACKUP_DIR="/var/lib/nextcloud/backups"
+          DATE=$(date +%Y%m%d_%H%M%S)
+          RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-7}"
+          LOG_FILE="/var/log/nextcloud/backup.log"
+          
+          log() {
+              echo "$(date '+%Y-%m-%d %H:%M:%S'): $*" | tee -a "$LOG_FILE"
+          }
+          
+          log "Starting Nextcloud backup"
+          
+          # Create backup directory
+          mkdir -p "$BACKUP_DIR"
+          
+          # Enable maintenance mode
+          log "Enabling maintenance mode"
+          docker-compose -f /opt/nextcloud/docker-compose.yml exec -T nextcloud \
+              sudo -u www-data php occ maintenance:mode --on || true
+          
+          # Backup database
+          log "Backing up database"
+          docker-compose -f /opt/nextcloud/docker-compose.yml exec -T db \
+              pg_dump -U nextcloud nextcloud | gzip > "$BACKUP_DIR/nextcloud-db-$DATE.sql.gz"
+          
+          # Backup data directory (excluding cache and sessions)
+          log "Backing up data directory"
+          tar -czf "$BACKUP_DIR/nextcloud-data-$DATE.tar.gz" \
+              -C /var/lib/nextcloud \
+              --exclude=data/*/cache \
+              --exclude=data/*/sessions \
+              --exclude=data/nextcloud.log \
+              data config
+          
+          # Disable maintenance mode
+          log "Disabling maintenance mode"
+          docker-compose -f /opt/nextcloud/docker-compose.yml exec -T nextcloud \
+              sudo -u www-data php occ maintenance:mode --off || true
+          
+          # Cleanup old backups
+          log "Cleaning up backups older than $RETENTION_DAYS days"
+          find "$BACKUP_DIR" -type f -mtime +$RETENTION_DAYS -delete
+          
+          # Log backup size
+          BACKUP_SIZE=$(du -sh "$BACKUP_DIR/nextcloud-"*"$DATE"* | awk '{print $1}' | tr '\n' ' ')
+          log "Backup completed. Size: $BACKUP_SIZE"
+
+    # Health check script
+    - path: /usr/local/bin/health-check.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Nextcloud Health Check Script
+          # Monitors service health and sends alerts if needed
+          
+          set -euo pipefail
+          
+          LOG_FILE="/var/log/nextcloud/health-check.log"
+          DOMAIN="${NEXTCLOUD_DOMAIN:-localhost}"
+          
+          log() {
+              echo "$(date '+%Y-%m-%d %H:%M:%S'): $*" | tee -a "$LOG_FILE"
+          }
+          
+          # Source environment
+          if [ -f /opt/nextcloud/.env ]; then
+              set -a
+              source /opt/nextcloud/.env
+              set +a
+          fi
+          
+          # Check container status
+          check_containers() {
+              local failed=0
+              for service in nextcloud db redis nginx; do
+                  if ! docker-compose -f /opt/nextcloud/docker-compose.yml ps "$service" | grep -q "Up"; then
+                      log "ERROR: Service $service is not running"
+                      failed=1
+                  fi
+              done
+              return $failed
+          }
+          
+          # Check HTTP response
+          check_http() {
+              local url="https://$DOMAIN/status.php"
+              if ! curl -f -s "$url" >/dev/null; then
+                  log "ERROR: HTTP check failed for $url"
+                  return 1
+              fi
+              return 0
+          }
+          
+          # Check disk space
+          check_disk_space() {
+              local usage=$(df /var/lib/nextcloud | tail -1 | awk '{print $5}' | sed 's/%//')
+              if [ "$usage" -gt 85 ]; then
+                  log "WARNING: Disk usage is ${usage}%"
+                  return 1
+              fi
+              return 0
+          }
+          
+          # Run checks
+          if check_containers && check_http && check_disk_space; then
+              log "All health checks passed"
+              exit 0
+          else
+              log "Health check failed"
+              exit 1
+          fi
+
+systemd:
+  units:
+    # Enable Docker
+    - name: docker.service
+      enabled: true
+
+    # Mount data disk
+    - name: var-lib-nextcloud.mount
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Mount Nextcloud Data Disk
+        Before=setup-nextcloud.service
+        
+        [Mount]
+        What=/dev/disk/by-label/NEXTCLOUD_DATA
+        Where=/var/lib/nextcloud
+        Type=ext4
+        Options=defaults,noatime
+        
+        [Install]
+        WantedBy=multi-user.target
+
+    # Setup storage and SSL
+    - name: setup-nextcloud.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Setup Nextcloud Environment
+        After=docker.service var-lib-nextcloud.mount
+        Before=nextcloud.service
+        ConditionFirstBoot=true
+        
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        User=root
+        ExecStart=/usr/local/bin/setup-nextcloud-storage.sh
+        ExecStart=/usr/local/bin/setup-ssl.sh
+        ExecStart=/bin/mkdir -p /var/lib/nextcloud/data /var/lib/nextcloud/config /var/lib/nextcloud/apps
+        ExecStart=/bin/mkdir -p /var/lib/nextcloud/db /var/lib/nextcloud/redis /var/lib/nextcloud/backups
+        ExecStart=/bin/chown -R nextcloud:nextcloud /var/lib/nextcloud
+        ExecStart=/bin/chown -R nextcloud:nextcloud /opt/nextcloud
+        
+        [Install]
+        WantedBy=multi-user.target
+
+    # Main Nextcloud service using Docker Compose
+    - name: nextcloud.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Nextcloud Docker Compose Stack
+        After=setup-nextcloud.service
+        Requires=docker.service setup-nextcloud.service
+        Wants=network-online.target
+        After=network-online.target
+        
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        WorkingDirectory=/opt/nextcloud
+        User=nextcloud
+        Group=nextcloud
+        
+        # Pull latest images on start
+        ExecStartPre=/usr/bin/docker-compose pull
+        ExecStartPre=-/usr/bin/docker-compose down
+        ExecStart=/usr/bin/docker-compose up -d
+        ExecReload=/usr/bin/docker-compose restart
+        ExecStop=/usr/bin/docker-compose down
+        
+        # Restart policy
+        Restart=on-failure
+        RestartSec=30
+        TimeoutStartSec=300
+        
+        [Install]
+        WantedBy=multi-user.target
+
+    # Backup service
+    - name: nextcloud-backup.service
+      contents: |
+        [Unit]
+        Description=Nextcloud Backup
+        After=nextcloud.service
+        Requires=nextcloud.service
+        
+        [Service]
+        Type=oneshot
+        User=nextcloud
+        Group=nextcloud
+        ExecStart=/usr/local/bin/backup-nextcloud.sh
+
+    # Backup timer (daily at 2 AM)
+    - name: nextcloud-backup.timer
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Daily Nextcloud Backup
+        Requires=nextcloud-backup.service
+        
+        [Timer]
+        OnCalendar=daily
+        Persistent=true
+        RandomizedDelaySec=30m
+        
+        [Install]
+        WantedBy=timers.target
+
+    # Health check service
+    - name: nextcloud-health.service
+      contents: |
+        [Unit]
+        Description=Nextcloud Health Check
+        After=nextcloud.service
+        Requires=nextcloud.service
+        
+        [Service]
+        Type=oneshot
+        User=nextcloud
+        Group=nextcloud
+        ExecStart=/usr/local/bin/health-check.sh
+
+    # Health check timer (every 10 minutes)
+    - name: nextcloud-health.timer
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Nextcloud Health Check Timer
+        Requires=nextcloud-health.service
+        
+        [Timer]
+        OnBootSec=5min
+        OnUnitActiveSec=10min
+        
+        [Install]
+        WantedBy=timers.target
+
+    # Automatic updates (security only)
+    - name: flatcar-update.service
+      mask: false
+      enabled: true
+
+    # Log rotation for Nextcloud logs
+    - name: logrotate-nextcloud.service
+      contents: |
+        [Unit]
+        Description=Nextcloud Log Rotation
+        
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/sbin/logrotate -f /etc/logrotate.d/nextcloud
+
+    - name: logrotate-nextcloud.timer
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Daily Nextcloud Log Rotation
+        Requires=logrotate-nextcloud.service
+        
+        [Timer]
+        OnCalendar=daily
+        Persistent=true
+        
+        [Install]
+        WantedBy=timers.target
+
+  # Additional system configuration
+  files:
+    # Log rotation configuration
+    - path: /etc/logrotate.d/nextcloud
+      mode: 0644
+      contents:
+        inline: |
+          /var/log/nextcloud/*.log {
+              daily
+              rotate 7
+              compress
+              delaycompress
+              missingok
+              notifempty
+              create 644 nextcloud nextcloud
+          }
+
+    # Sysctl optimizations for Nextcloud
+    - path: /etc/sysctl.d/99-nextcloud.conf
+      mode: 0644
+      contents:
+        inline: |
+          # Nextcloud performance optimizations
+          vm.swappiness=10
+          vm.dirty_ratio=15
+          vm.dirty_background_ratio=5
+          net.core.rmem_max=16777216
+          net.core.wmem_max=16777216
+          net.ipv4.tcp_rmem=4096 87380 16777216
+          net.ipv4.tcp_wmem=4096 65536 16777216
+
+    # Firewall configuration (using iptables)
+    - path: /etc/systemd/system/nextcloud-firewall.service
+      mode: 0644
+      contents:
+        inline: |
+          [Unit]
+          Description=Nextcloud Firewall Rules
+          Before=nextcloud.service
+          
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStart=/bin/bash -c 'iptables -A INPUT -p tcp --dport 22 -j ACCEPT'
+          ExecStart=/bin/bash -c 'iptables -A INPUT -p tcp --dport 80 -j ACCEPT'
+          ExecStart=/bin/bash -c 'iptables -A INPUT -p tcp --dport 443 -j ACCEPT'
+          ExecStart=/bin/bash -c 'iptables -A INPUT -i lo -j ACCEPT'
+          ExecStart=/bin/bash -c 'iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT'
+          ExecStart=/bin/bash -c 'iptables -P INPUT DROP'
+          
+          [Install]
+          WantedBy=multi-user.target
+
+    # Enable the firewall
+    - name: nextcloud-firewall.service
+      enabled: true

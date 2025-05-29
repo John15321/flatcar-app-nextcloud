@@ -1,0 +1,285 @@
+# =========================================================================
+# NEXTCLOUD DEVELOPMENT CONFIGURATION FOR FLATCAR CONTAINER LINUX
+# =========================================================================
+#
+# This Butane configuration creates a development-friendly Nextcloud setup
+# optimized for local testing, learning, and development work with:
+#
+# DEVELOPMENT FEATURES:
+# - Simple, memorable passwords (admin/admin123)
+# - Adminer database management interface (:8081)
+# - Exposed database ports for external tools
+# - Multiple trusted domains for local access
+# - Lower resource requirements
+#
+# ARCHITECTURE:
+# - Nextcloud (latest) with PostgreSQL 15 and Redis 7
+# - Nginx reverse proxy for production-like setup
+# - All data stored on root filesystem (no additional disk needed)
+# - Development tools included (Adminer)
+#
+# INTENDED USE:
+# - Local development on laptop/PC
+# - Testing Nextcloud configurations
+# - Learning how the system works
+# - Debugging and troubleshooting
+#
+# NOT FOR PRODUCTION:
+# - Simple passwords are insecure
+# - Exposed database ports
+# - Development tools included
+# - Less restrictive security settings
+#
+# QUICK START:
+# 1. Replace "your-ssh-key-here" with your SSH public key
+# 2. Convert: butane --pretty --strict nextcloud-development.yaml > dev.ign
+# 3. Run: ./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081
+# 4. Access: http://localhost:8080 (admin/admin123)
+#
+# =========================================================================
+
+variant: flatcar
+version: 1.0.0
+
+# Development configuration for Nextcloud on Flatcar Linux
+# This configuration is optimized for development and testing
+
+# USER CONFIGURATION
+# Uses the default 'core' user for simplicity in development
+passwd:
+  users:
+    - name: core                   # Default Flatcar user
+      groups:
+        - docker                   # Access to Docker daemon
+        - sudo                     # Administrative privileges
+      ssh_authorized_keys:
+        - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... your-ssh-key-here"
+        # Add your public SSH key above - generate with: ssh-keygen -t ed25519
+        # This allows SSH access: ssh -p 2222 core@localhost
+
+storage:
+  # DIRECTORY STRUCTURE
+  # Simple directory-based storage on root filesystem
+  # No additional disks needed - perfect for development VMs
+  directories:
+    - path: /opt/nextcloud         # Main application directory
+      mode: 0755
+    - path: /var/log/nextcloud     # Centralized logging
+      mode: 0755
+
+  files:
+    # ENVIRONMENT CONFIGURATION
+    # Contains all the settings for the Nextcloud stack
+    # Development-friendly with simple passwords
+    - path: /opt/nextcloud/.env
+      mode: 0600                   # Secure file permissions
+      contents:
+        inline: |
+          # Development Configuration for Nextcloud with PostgreSQL
+          # Simple settings for local testing and development
+          
+          # PostgreSQL Database Configuration
+          POSTGRES_DB=nextcloud
+          POSTGRES_USER=nextcloud
+          POSTGRES_PASSWORD=development_password
+          
+          # Nextcloud Admin Configuration (simple for testing)
+          NEXTCLOUD_ADMIN_USER=admin
+          NEXTCLOUD_ADMIN_PASSWORD=admin123
+          
+          # Domain Configuration (for local development)
+          NEXTCLOUD_DOMAIN=localhost
+          NEXTCLOUD_TRUSTED_DOMAINS=localhost,127.0.0.1,10.0.2.15,192.168.1.100
+          
+          # Redis Cache Configuration
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+          
+          # Development settings (more permissive)
+          PHP_MEMORY_LIMIT=256M
+          PHP_UPLOAD_LIMIT=1G
+          
+          # Development Notes:
+          # - Simple passwords for easy testing
+          # - Includes Adminer for database management
+          # - Exposed ports for development tools
+          # - Multiple trusted domains for various networking scenarios
+          # - Self-signed SSL certificates will show browser warnings
+
+    # Docker Compose configuration
+    - path: /opt/nextcloud/docker-compose.yml
+      mode: 0644
+      contents:
+        local: docker-compose.yml
+
+    # Nginx configuration
+    - path: /opt/nextcloud/nginx/nextcloud.conf
+      mode: 0644
+      contents:
+        local: nginx/nextcloud.conf
+
+    # Simple SSL generation script for development
+    - path: /usr/local/bin/generate-dev-ssl.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Generate self-signed SSL certificates for development
+          
+          SSL_DIR="/opt/nextcloud/ssl"
+          mkdir -p "$SSL_DIR"
+          
+          echo "Generating self-signed SSL certificate for development..."
+          openssl req -x509 -newkey rsa:4096 -sha256 -days 365 -nodes \
+              -keyout "$SSL_DIR/key.pem" \
+              -out "$SSL_DIR/cert.pem" \
+              -subj "/C=US/ST=Dev/L=Local/O=Development/CN=localhost" \
+              -addext "subjectAltName=DNS:localhost,DNS:*.localhost,IP:127.0.0.1,IP:10.0.2.15"
+          
+          chmod 600 "$SSL_DIR"/*.pem
+          echo "SSL certificate generated at $SSL_DIR"
+
+    # Development helper scripts
+    - path: /usr/local/bin/nextcloud-logs.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          cd /opt/nextcloud
+          docker-compose logs -f "$@"
+
+    - path: /usr/local/bin/nextcloud-shell.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          cd /opt/nextcloud
+          docker-compose exec nextcloud bash
+
+    - path: /usr/local/bin/nextcloud-occ.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          cd /opt/nextcloud
+          docker-compose exec -u www-data nextcloud php occ "$@"
+
+    - path: /usr/local/bin/nextcloud-reset.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Reset Nextcloud for development (WARNING: Destroys all data!)
+          
+          echo "WARNING: This will destroy all Nextcloud data!"
+          echo "Press Ctrl+C to cancel, or wait 10 seconds to continue..."
+          sleep 10
+          
+          cd /opt/nextcloud
+          docker-compose down -v
+          rm -rf data/* config/* db/* redis/*
+          docker-compose up -d
+          
+          echo "Nextcloud reset complete. Visit http://localhost:8080 to set up."
+
+systemd:
+  units:
+    # Enable Docker
+    - name: docker.service
+      enabled: true
+
+    # Setup Nextcloud directories and SSL
+    - name: setup-nextcloud-dev.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Setup Nextcloud Development Environment
+        After=docker.service
+        Before=nextcloud-dev.service
+        ConditionFirstBoot=true
+        
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/bin/mkdir -p /opt/nextcloud/data /opt/nextcloud/config /opt/nextcloud/apps
+        ExecStart=/bin/mkdir -p /opt/nextcloud/db /opt/nextcloud/redis /opt/nextcloud/ssl
+        ExecStart=/usr/local/bin/generate-dev-ssl.sh
+        ExecStart=/bin/chown -R core:core /opt/nextcloud
+        
+        [Install]
+        WantedBy=multi-user.target
+
+    # Nextcloud development service
+    - name: nextcloud-dev.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Nextcloud Development Docker Compose Stack
+        After=setup-nextcloud-dev.service
+        Requires=docker.service setup-nextcloud-dev.service
+        
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        WorkingDirectory=/opt/nextcloud
+        User=core
+        Group=core
+        
+        # Always pull latest images in development
+        ExecStartPre=/usr/bin/docker-compose pull
+        ExecStartPre=-/usr/bin/docker-compose down
+        ExecStart=/usr/bin/docker-compose up -d
+        ExecReload=/usr/bin/docker-compose restart
+        ExecStop=/usr/bin/docker-compose down
+        
+        # Auto-restart on failure
+        Restart=on-failure
+        RestartSec=10
+        TimeoutStartSec=180
+        
+        [Install]
+        WantedBy=multi-user.target
+
+    # Development log aggregation
+    - name: nextcloud-dev-logs.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Nextcloud Development Log Viewer
+        After=nextcloud-dev.service
+        
+        [Service]
+        Type=simple
+        User=core
+        Group=core
+        WorkingDirectory=/opt/nextcloud
+        ExecStart=/usr/bin/docker-compose logs -f
+        Restart=always
+        RestartSec=5
+        StandardOutput=journal
+        StandardError=journal
+        
+        [Install]
+        WantedBy=multi-user.target
+
+    # Quick access to development URLs
+    - name: nextcloud-dev-info.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Show Nextcloud Development URLs
+        After=nextcloud-dev.service
+        
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/bin/bash -c 'sleep 30'
+        ExecStart=/bin/bash -c 'echo "=== Nextcloud Development URLs ==="'
+        ExecStart=/bin/bash -c 'echo "Main Nextcloud: http://localhost:8080"'
+        ExecStart=/bin/bash -c 'echo "Via proxy: https://localhost (self-signed cert)"'
+        ExecStart=/bin/bash -c 'echo "Database admin: http://localhost:8081"'
+        ExecStart=/bin/bash -c 'echo "Default admin: admin / admin123"'
+        ExecStart=/bin/bash -c 'echo "=================================="'
+        
+        [Install]
+        WantedBy=multi-user.target
