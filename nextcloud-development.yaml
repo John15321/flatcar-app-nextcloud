@@ -33,8 +33,9 @@
 # QUICK START:
 # 1. Replace "your-ssh-key-here" with your SSH public key
 # 2. Convert: butane --pretty --strict nextcloud-development.yaml > dev.ign
-# 3. Run: ./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081
+# 3. Run: ./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081 -f 9980:9980
 # 4. Access: http://localhost:8080 (admin/admin123)
+# 5. Wait for app installation to complete (may take several minutes)
 #
 # =========================================================================
 
@@ -97,9 +98,12 @@ storage:
           REDIS_HOST=redis
           REDIS_PORT=6379
           
+          # Collabora Online Configuration
+          COLLABORA_DOMAIN=localhost
+          
           # Development settings (more permissive)
-          PHP_MEMORY_LIMIT=256M
-          PHP_UPLOAD_LIMIT=1G
+          PHP_MEMORY_LIMIT=512M
+          PHP_UPLOAD_LIMIT=16G
           
           # Development Notes:
           # - Simple passwords for easy testing
@@ -283,6 +287,28 @@ storage:
               # Password: (your POSTGRES_PASSWORD)
               # Database: nextcloud (or your POSTGRES_DB)
 
+            # -----------------------------------------------------------------------
+            # COLLABORA ONLINE DOCUMENT SERVER (CODE)
+            # -----------------------------------------------------------------------
+            # Provides collaborative document editing capabilities with Nextcloud Office
+            collabora:
+              image: collabora/code:latest
+              container_name: nextcloud-collabora
+              restart: unless-stopped
+              ports:
+                - "9980:9980"                # Office suite server
+              cap_add:
+                - MKNOD
+              environment:
+                - username=admin
+                - password=admin123
+                - dictionaries=en_US,en_GB,de_DE,es_ES,fr_FR,it_IT,pl_PL,nl_NL,ru_RU,pt_PT,pt_BR,cs_CZ,da_DK,sv_SE,nb_NO,fi_FI,hu_HU,ro_RO,sk_SK,hr_HR,sl_SI,el_GR,tr_TR,bg_BG,lt_LT,lv_LV,et_EE
+                - extra_params=--o:ssl.enable=false --o:ssl.termination=true
+                - aliasgroup1=http://nginx:80
+                - TZ=Europe/Berlin
+              networks:
+                - nextcloud-network
+
           # =========================================================================
           # DOCKER VOLUMES
           # =========================================================================
@@ -452,6 +478,80 @@ storage:
           
           echo "Nextcloud reset complete. Visit http://localhost:8080 to set up."
 
+    # Script to install essential Nextcloud apps
+    - path: /opt/bin/nextcloud-install-apps.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Script to install essential Nextcloud apps after initial setup
+          
+          echo "Installing essential Nextcloud apps..."
+          
+          cd /opt/nextcloud
+          
+          # Wait for Nextcloud to be fully initialized
+          echo "Waiting for Nextcloud to initialize..."
+          attempt=0
+          max_attempts=30
+          
+          until docker-compose exec -T -u www-data nextcloud php occ status | grep -q "installed: true" || [ $attempt -ge $max_attempts ]
+          do
+            echo "Waiting for Nextcloud initialization... ($((attempt+1))/$max_attempts)"
+            sleep 10
+            attempt=$((attempt+1))
+          done
+          
+          if [ $attempt -ge $max_attempts ]; then
+            echo "Nextcloud initialization timed out. Please check logs."
+            exit 1
+          fi
+          
+          echo "Nextcloud initialized. Installing apps..."
+          
+          # Core Productivity & Collaboration apps
+          docker-compose exec -T -u www-data nextcloud php occ app:install spreed || true  # Nextcloud Talk
+          docker-compose exec -T -u www-data nextcloud php occ app:install mail || true    # Nextcloud Mail
+          docker-compose exec -T -u www-data nextcloud php occ app:install calendar || true # Calendar
+          docker-compose exec -T -u www-data nextcloud php occ app:install richdocuments || true # Nextcloud Office
+          docker-compose exec -T -u www-data nextcloud php occ app:install deck || true    # Kanban boards
+          
+          # Security & Access Management
+          docker-compose exec -T -u www-data nextcloud php occ app:install passwords || true # Password manager
+          docker-compose exec -T -u www-data nextcloud php occ app:install twofactor_totp || true # 2FA
+          docker-compose exec -T -u www-data nextcloud php occ app:install files_accesscontrol || true # File access control
+          
+          # Workflow Automation & Data Management
+          docker-compose exec -T -u www-data nextcloud php occ app:install flow_notifications || true # Nextcloud Flow
+          docker-compose exec -T -u www-data nextcloud php occ app:install tables || true # Tables
+          
+          # Knowledge & Content Management
+          docker-compose exec -T -u www-data nextcloud php occ app:install collectives || true # Wiki-like app
+          docker-compose exec -T -u www-data nextcloud php occ app:install notes || true # Simple notes
+          docker-compose exec -T -u www-data nextcloud php occ app:install news || true # RSS reader
+          
+          # Media & Design Tools
+          docker-compose exec -T -u www-data nextcloud php occ app:install photos || true # Photo management
+          docker-compose exec -T -u www-data nextcloud php occ app:install music || true # Music player
+          docker-compose exec -T -u www-data nextcloud php occ app:install unsplash || true # Stock photos
+          
+          echo "App installation completed! Log in to Nextcloud to start using these apps."
+          
+          # Set some recommended app configurations
+          echo "Configuring apps with recommended settings..."
+          
+          # Configure Collabora Online integration for document editing
+          docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments wopi_url --value="http://collabora:9980"
+          docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments public_wopi_url --value="https://localhost:9980"
+          docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments disable_certificate_verification --value="yes"
+          
+          # Optimize default app settings
+          docker-compose exec -T -u www-data nextcloud php occ config:system:set default_phone_region --value="US"
+          docker-compose exec -T -u www-data nextcloud php occ config:system:set memcache.local --value="\OC\Memcache\Redis"
+          docker-compose exec -T -u www-data nextcloud php occ config:system:set memcache.locking --value="\OC\Memcache\Redis"
+          
+          echo "All done! Your Nextcloud instance is ready with pre-installed apps."
+
 systemd:
   units:
     # Enable Docker
@@ -576,8 +676,41 @@ systemd:
         ExecStart=/bin/bash -c 'echo "Main Nextcloud: http://localhost:8080"'
         ExecStart=/bin/bash -c 'echo "Via proxy: https://localhost (self-signed cert)"'
         ExecStart=/bin/bash -c 'echo "Database admin: http://localhost:8081"'
+        ExecStart=/bin/bash -c 'echo "Collabora Office: https://localhost:9980 (integrated with Nextcloud)"'
+        ExecStart=/bin/bash -c 'echo ""'
         ExecStart=/bin/bash -c 'echo "Default admin: admin / admin123"'
+        ExecStart=/bin/bash -c 'echo ""'
+        ExecStart=/bin/bash -c 'echo "Pre-installed Apps:"'
+        ExecStart=/bin/bash -c 'echo "- Collaboration: Talk, Mail, Calendar, Office, Deck"'
+        ExecStart=/bin/bash -c 'echo "- Security: Passwords, Two-Factor Authentication, File Access Control"'
+        ExecStart=/bin/bash -c 'echo "- Workflow: Flow, Tables"'
+        ExecStart=/bin/bash -c 'echo "- Knowledge: Collectives, Notes, News"'
+        ExecStart=/bin/bash -c 'echo "- Media: Photos, Music, Unsplash"'
+        ExecStart=/bin/bash -c 'echo ""'
+        ExecStart=/bin/bash -c 'echo "Apps will be installed automatically after first boot."'
+        ExecStart=/bin/bash -c 'echo "This may take several minutes to complete."'
         ExecStart=/bin/bash -c 'echo "=================================="'
+        
+        [Install]
+        WantedBy=multi-user.target
+
+    # Install Nextcloud apps service
+    - name: nextcloud-install-apps.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install Nextcloud Apps
+        After=nextcloud-dev.service
+        Requires=nextcloud-dev.service
+        
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        WorkingDirectory=/opt/nextcloud
+        User=core
+        Group=core
+        Environment=PATH=/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+        ExecStart=/opt/bin/nextcloud-install-apps.sh
         
         [Install]
         WantedBy=multi-user.target
