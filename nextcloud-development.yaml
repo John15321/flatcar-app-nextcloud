@@ -53,7 +53,7 @@ passwd:
         - docker                   # Access to Docker daemon
         - sudo                     # Administrative privileges
       ssh_authorized_keys:
-        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDBYStXBOkMIJYcU0QYEyQG8D3icRyQSnOaxNTSxqeD44ocwgXhkEz1oXPosI0DbK+yqFItlvV6glhy17lxewnPn1dAT5jInDVPdaiwzAwxIJ3nOYUH8zzLezWgP56r+D9Zl+JOl44JMnMq5naio1A88xIWe0aixCY8QmVDc95z87OGkHwAWs1i8oEnDhdERRfyv8FbvcE9LLsG0HNnzcb58sczwhHgHi7QLwlfldQ4LcE5YUnxW4Io8I6juGORTdFaaFTfZpf0O69Zv0XsKIYgSHEvdGA7QJTTONvYRLB+O6vzJJaTTk2O3rrnFha0u19TLzHKBDIMOsIvtgzvXqbDArlNTgWOum9z1vq29yfyB3WjSxefyQfIq4jVdFsXD0yEjcGneH3eVAP3UsvFCF1Dh5LUF+P7jA5bMW/x2TOSATanVpyeiYAwL0kDnQVU7gXqfr1M4hhZjdfai+GXJ1uRG58r/xTxMkQBxGwRdvoWjyEJ1kT0uKJFZ0fEQtqTk+bL0MWUrzbvEqAygYjkT1PWZVgD8mPzUoZAnmZOoy72p09mlcvmSUQgNaZUjt9agrQzW8Mbe/8zd9O8jVAy+wcPuoJspuVDxwxu3mdRcK3NA7luJs4VwjsuLSJpQEkaP15RfDKHs4tf8BltiPGvs+ZxA8LgwOtFM55gv4V0fPmyXw== janbronicki@DESKTOP-SNSADQ2"
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCZ7dEyYafGSvGj8Unm3LaveXEJMe07KN0WOgeA8Ippq3zP/PBCii243YwQEZUtbUkbiSmUxFMeNWbIUEoRCOrZ+G+79cpxHKRfOcp8waFE8ZtcTmpxEuSKK3FTCi0cEL9imKbOU61JSfpjj+ad7//VJ0g8lp2I03Re0OxiqXcMPjnvO8Bnj8WS6w5TMj8utxhY1a6blJeb8YL+zOV7hlumd0W3u3pektGTq2MavuRj1Oookyc7H4ku9oX5ieomT8qJCWY+LB0WaDlIY+qx6IlzIFpDq3g6oq8XgW5Qqq+zloirieudxWh0Y5xIbG6Ur17XDBfyItsVQAxXS0uFbC6yMvVE6F91vMVseurKx3THlzytVPyKmEBf4K0DHenQ1npCPn27HHMzXbUUEZQmftGrEhWCb1UkeupOSm0QgJcIJxUlPpPH+uCC5BXfDYDhlVjmIOhcYWRz8mWoNtdB9wN3Kb12uZYgJYGGEZCQySruzjVbj7mq/VAnimpOt5G2RRQ29TPdRatWTXXyopwlX1DKEk+37RmQZJcqq1BzFntUV3+kdEzCmFIcaXYueMPhx9uYdKUof1E22VyBZCjVUWLALZphKX8YoFsmMfFH0Rs5UcWrcP9rWohk3ee8u+T3h+o0CBvdYenDSOTTlOoQwTaa58Lp8nTQK1kuXM44DeAelQ== jan@jan-B550-GAMING-X-V2"
         # Add your public SSH key above - generate with: ssh-keygen -t ed25519
         # This allows SSH access: ssh -p 2222 core@localhost
 
@@ -198,8 +198,8 @@ storage:
                 - REDIS_HOST_PORT=6379
                 
                 # HTTPS configuration (when behind reverse proxy)
-                - OVERWRITEPROTOCOL=https
-                - OVERWRITECLIURL=https://${NEXTCLOUD_DOMAIN}
+                # - OVERWRITEPROTOCOL=https
+                # - OVERWRITECLIURL=https://${NEXTCLOUD_DOMAIN}
               depends_on:
                 - db                         # Database must be ready first
                 - redis                      # Cache must be available

@@ -346,7 +346,7 @@ cp ../flatcar_production_qemu_image.img.fresh ../flatcar_production_qemu_image.i
 
 # Launch VM with Nextcloud configuration and port forwarding
 # Note: Using non-privileged ports to avoid requiring sudo
-../flatcar_production_qemu.sh \
+./flatcar_production_qemu.sh \
   -M 4096 \
   -f 8080:80 \
   -f 8443:443 \

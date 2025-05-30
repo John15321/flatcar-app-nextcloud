@@ -50,7 +50,7 @@ passwd:
         - docker                   # Access to Docker daemon
         - sudo                     # Administrative privileges when needed
       ssh_authorized_keys:
-        - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... your-ssh-key-here"
+        - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCZ7dEyYafGSvGj8Unm3LaveXEJMe07KN0WOgeA8Ippq3zP/PBCii243YwQEZUtbUkbiSmUxFMeNWbIUEoRCOrZ+G+79cpxHKRfOcp8waFE8ZtcTmpxEuSKK3FTCi0cEL9imKbOU61JSfpjj+ad7//VJ0g8lp2I03Re0OxiqXcMPjnvO8Bnj8WS6w5TMj8utxhY1a6blJeb8YL+zOV7hlumd0W3u3pektGTq2MavuRj1Oookyc7H4ku9oX5ieomT8qJCWY+LB0WaDlIY+qx6IlzIFpDq3g6oq8XgW5Qqq+zloirieudxWh0Y5xIbG6Ur17XDBfyItsVQAxXS0uFbC6yMvVE6F91vMVseurKx3THlzytVPyKmEBf4K0DHenQ1npCPn27HHMzXbUUEZQmftGrEhWCb1UkeupOSm0QgJcIJxUlPpPH+uCC5BXfDYDhlVjmIOhcYWRz8mWoNtdB9wN3Kb12uZYgJYGGEZCQySruzjVbj7mq/VAnimpOt5G2RRQ29TPdRatWTXXyopwlX1DKEk+37RmQZJcqq1BzFntUV3+kdEzCmFIcaXYueMPhx9uYdKUof1E22VyBZCjVUWLALZphKX8YoFsmMfFH0Rs5UcWrcP9rWohk3ee8u+T3h+o0CBvdYenDSOTTlOoQwTaa58Lp8nTQK1kuXM44DeAelQ== jan@jan-B550-GAMING-X-V2"
         # Add your public SSH key above - generate with: ssh-keygen -t ed25519
         # This is the ONLY way to access the system - no password login
 
