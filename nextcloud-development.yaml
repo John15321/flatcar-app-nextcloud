@@ -33,7 +33,7 @@
 # QUICK START:
 # 1. Replace "your-ssh-key-here" with your SSH public key
 # 2. Convert: butane --pretty --strict nextcloud-development.yaml > dev.ign
-# 3. Run: ./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081 -f 9980:9980
+# 3. Run: ./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081 -f 9980:9980 -- -display curses -snapshot
 # 4. Access: http://localhost:8080 (admin/admin123)
 # 5. Wait for app installation to complete (may take several minutes)
 #
@@ -59,9 +59,6 @@ passwd:
         # This allows SSH access: ssh -p 2222 core@localhost
 
 storage:
-  # DIRECTORY STRUCTURE
-  # Simple directory-based storage on root filesystem
-  # No additional disks needed - perfect for development VMs
   directories:
     - path: /opt/nextcloud         # Main application directory
       mode: 0755
@@ -69,11 +66,7 @@ storage:
       mode: 0755
     - path: /var/log/nextcloud     # Centralized logging
       mode: 0755
-
   files:
-    # ENVIRONMENT CONFIGURATION
-    # Contains all the settings for the Nextcloud stack
-    # Development-friendly with simple passwords
     - path: /opt/nextcloud/.env
       mode: 0600                   # Secure file permissions
       contents:
@@ -112,7 +105,6 @@ storage:
           # - Multiple trusted domains for various networking scenarios
           # - Self-signed SSL certificates will show browser warnings
 
-    # Docker Compose configuration
     - path: /opt/nextcloud/docker-compose.yml
       mode: 0644
       contents:
@@ -304,30 +296,26 @@ storage:
                 - password=admin123
                 - dictionaries=en_US,en_GB,de_DE,es_ES,fr_FR,it_IT,pl_PL,nl_NL,ru_RU,pt_PT,pt_BR,cs_CZ,da_DK,sv_SE,nb_NO,fi_FI,hu_HU,ro_RO,sk_SK,hr_HR,sl_SI,el_GR,tr_TR,bg_BG,lt_LT,lv_LV,et_EE
                 - extra_params=--o:ssl.enable=false --o:ssl.termination=true
-                - aliasgroup1=http://nginx:80
+                - server_name=localhost
+                - aliasgroup1=http://nextcloud:80
+                - aliasgroup2=http://nginx:80
+                - aliasgroup3=https://localhost:443
                 - TZ=Europe/Berlin
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:9980/"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
               networks:
                 - nextcloud-network
 
-          # =========================================================================
-          # DOCKER VOLUMES
-          # =========================================================================
-          # Named volumes for data that should persist across container restarts
           volumes:
-            nextcloud_data:                 # Shared Nextcloud application files
+            nextcloud_data:
 
-          # =========================================================================
-          # DOCKER NETWORKS
-          # =========================================================================
-          # Private network for inter-container communication
-          # Provides isolation from other Docker networks and the host
           networks:
             nextcloud-network:
-              driver: bridge                 # Standard Docker bridge network
-              # All containers can communicate with each other by name
-              # External access only through explicitly exposed ports
+              driver: bridge
 
-    # Nginx configuration
     - path: /opt/nextcloud/nginx/nextcloud.conf
       mode: 0644
       contents:
@@ -414,7 +402,6 @@ storage:
               }
           }
 
-    # Simple SSL generation script for development
     - path: /opt/bin/generate-dev-ssl.sh
       mode: 0755
       contents:
@@ -435,14 +422,13 @@ storage:
           chmod 600 "$SSL_DIR"/*.pem
           echo "SSL certificate generated at $SSL_DIR"
 
-    # Development helper scripts
     - path: /opt/bin/nextcloud-logs.sh
       mode: 0755
       contents:
         inline: |
           #!/bin/bash
           cd /opt/nextcloud
-          docker-compose logs -f "$@"
+          /opt/bin/docker-compose logs -f "$@"
 
     - path: /opt/bin/nextcloud-shell.sh
       mode: 0755
@@ -450,7 +436,7 @@ storage:
         inline: |
           #!/bin/bash
           cd /opt/nextcloud
-          docker-compose exec nextcloud bash
+          /opt/bin/docker-compose exec nextcloud bash
 
     - path: /opt/bin/nextcloud-occ.sh
       mode: 0755
@@ -458,7 +444,7 @@ storage:
         inline: |
           #!/bin/bash
           cd /opt/nextcloud
-          docker-compose exec -u www-data nextcloud php occ "$@"
+          /opt/bin/docker-compose exec -u www-data nextcloud php occ "$@"
 
     - path: /opt/bin/nextcloud-reset.sh
       mode: 0755
@@ -472,13 +458,12 @@ storage:
           sleep 10
           
           cd /opt/nextcloud
-          docker-compose down -v
+          /opt/bin/docker-compose down -v
           rm -rf data/* config/* db/* redis/*
-          docker-compose up -d
+          /opt/bin/docker-compose up -d
           
           echo "Nextcloud reset complete. Visit http://localhost:8080 to set up."
 
-    # Script to install essential Nextcloud apps
     - path: /opt/bin/nextcloud-install-apps.sh
       mode: 0755
       contents:
@@ -495,7 +480,7 @@ storage:
           attempt=0
           max_attempts=30
           
-          until docker-compose exec -T -u www-data nextcloud php occ status | grep -q "installed: true" || [ $attempt -ge $max_attempts ]
+          until /opt/bin/docker-compose exec -T -u www-data nextcloud php occ status | grep -q "installed: true" || [ $attempt -ge $max_attempts ]
           do
             echo "Waiting for Nextcloud initialization... ($((attempt+1))/$max_attempts)"
             sleep 10
@@ -510,30 +495,30 @@ storage:
           echo "Nextcloud initialized. Installing apps..."
           
           # Core Productivity & Collaboration apps
-          docker-compose exec -T -u www-data nextcloud php occ app:install spreed || true  # Nextcloud Talk
-          docker-compose exec -T -u www-data nextcloud php occ app:install mail || true    # Nextcloud Mail
-          docker-compose exec -T -u www-data nextcloud php occ app:install calendar || true # Calendar
-          docker-compose exec -T -u www-data nextcloud php occ app:install richdocuments || true # Nextcloud Office
-          docker-compose exec -T -u www-data nextcloud php occ app:install deck || true    # Kanban boards
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install spreed || true  # Nextcloud Talk
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install mail || true    # Nextcloud Mail
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install calendar || true # Calendar
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install richdocuments || true # Nextcloud Office
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install deck || true    # Kanban boards
           
           # Security & Access Management
-          docker-compose exec -T -u www-data nextcloud php occ app:install passwords || true # Password manager
-          docker-compose exec -T -u www-data nextcloud php occ app:install twofactor_totp || true # 2FA
-          docker-compose exec -T -u www-data nextcloud php occ app:install files_accesscontrol || true # File access control
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install passwords || true # Password manager
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install twofactor_totp || true # 2FA
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install files_accesscontrol || true # File access control
           
           # Workflow Automation & Data Management
-          docker-compose exec -T -u www-data nextcloud php occ app:install flow_notifications || true # Nextcloud Flow
-          docker-compose exec -T -u www-data nextcloud php occ app:install tables || true # Tables
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install flow_notifications || true # Nextcloud Flow
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install tables || true # Tables
           
           # Knowledge & Content Management
-          docker-compose exec -T -u www-data nextcloud php occ app:install collectives || true # Wiki-like app
-          docker-compose exec -T -u www-data nextcloud php occ app:install notes || true # Simple notes
-          docker-compose exec -T -u www-data nextcloud php occ app:install news || true # RSS reader
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install collectives || true # Wiki-like app
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install notes || true # Simple notes
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install news || true # RSS reader
           
           # Media & Design Tools
-          docker-compose exec -T -u www-data nextcloud php occ app:install photos || true # Photo management
-          docker-compose exec -T -u www-data nextcloud php occ app:install music || true # Music player
-          docker-compose exec -T -u www-data nextcloud php occ app:install unsplash || true # Stock photos
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install photos || true # Photo management
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install music || true # Music player
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install unsplash || true # Stock photos
           
           echo "App installation completed! Log in to Nextcloud to start using these apps."
           
@@ -541,24 +526,194 @@ storage:
           echo "Configuring apps with recommended settings..."
           
           # Configure Collabora Online integration for document editing
-          docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments wopi_url --value="http://collabora:9980"
-          docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments public_wopi_url --value="https://localhost:9980"
-          docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments disable_certificate_verification --value="yes"
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments wopi_url --value="http://collabora:9980"
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments public_wopi_url --value="http://localhost:9980"
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments disable_certificate_verification --value="yes"
+          
+          # Additional Collabora settings for better compatibility
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments use_groups --value=""
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments doc_format --value="ooxml"
+          
+          # Make sure the richdocuments app is enabled
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:enable richdocuments
+          
+          # Ensure Nextcloud recognizes office file formats
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ maintenance:mimetype:update-db
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ maintenance:repair
           
           # Optimize default app settings
-          docker-compose exec -T -u www-data nextcloud php occ config:system:set default_phone_region --value="US"
-          docker-compose exec -T -u www-data nextcloud php occ config:system:set memcache.local --value="\OC\Memcache\Redis"
-          docker-compose exec -T -u www-data nextcloud php occ config:system:set memcache.locking --value="\OC\Memcache\Redis"
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:system:set default_phone_region --value="US"
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:system:set memcache.local --value="\OC\Memcache\Redis"
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:system:set memcache.locking --value="\OC\Memcache\Redis"
+          
+          # Allow a bit more time for services to fully initialize
+          echo "Waiting for services to stabilize..."
+          sleep 30
+          
+          # Run the Collabora check script for additional configuration
+          echo "Running Collabora check script for additional configuration..."
+          /opt/bin/check-collabora.sh
           
           echo "All done! Your Nextcloud instance is ready with pre-installed apps."
 
+    - path: /opt/bin/check-collabora.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Script to diagnose Collabora Online integration issues
+          
+          echo "==============================================="
+          echo "Checking Collabora Online integration with Nextcloud"
+          echo "==============================================="
+          
+          cd /opt/nextcloud
+          
+          # Check if Collabora container is running
+          echo "1. Checking if Collabora container is running..."
+          if docker ps | grep -q nextcloud-collabora; then
+            echo "✅ Collabora container is running"
+            collabora_status="running"
+          else
+            echo "❌ Collabora container is NOT running"
+            echo "Trying to start it..."
+            /opt/bin/docker-compose up -d collabora
+            sleep 5
+            if docker ps | grep -q nextcloud-collabora; then
+              echo "✅ Collabora container started successfully"
+              collabora_status="running"
+            else
+              echo "❌ Failed to start Collabora container"
+              docker-compose logs collabora
+              collabora_status="not running"
+            fi
+          fi
+          
+          # Check if richdocuments app is installed and enabled
+          echo
+          echo "2. Checking if richdocuments app is installed and enabled..."
+          if /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:list | grep -q "✓ richdocuments"; then
+            echo "✅ Nextcloud Office (richdocuments) app is installed and enabled"
+            app_status="enabled"
+          else
+            echo "❌ Nextcloud Office app is not installed or not enabled"
+            echo "Attempting to install and enable richdocuments..."
+            /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install richdocuments
+            /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:enable richdocuments
+            if docker-compose exec -T -u www-data nextcloud php occ app:list | grep -q "✓ richdocuments"; then
+              echo "✅ Successfully installed and enabled richdocuments app"
+              app_status="enabled"
+            else
+              echo "❌ Failed to install or enable richdocuments app"
+              app_status="disabled"
+            fi
+          fi
+          
+          # Check richdocuments configuration
+          echo
+          echo "3. Checking richdocuments app configuration..."
+          wopi_url=$(/opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:get richdocuments wopi_url)
+          echo "Current WOPI URL: $wopi_url"
+          
+          # Test connectivity from Nextcloud to Collabora
+          echo
+          echo "4. Testing connectivity from Nextcloud container to Collabora..."
+          if [ "$collabora_status" == "running" ]; then
+            /opt/bin/docker-compose exec nextcloud curl -s -I "$wopi_url" > /tmp/collabora_response 2>&1
+            if grep -q "HTTP/1.1 200" /tmp/collabora_response || grep -q "HTTP/1.1 301" /tmp/collabora_response || grep -q "HTTP/1.1 302" /tmp/collabora_response; then
+              echo "✅ Nextcloud can connect to Collabora"
+            else
+              echo "❌ Nextcloud cannot connect to Collabora"
+              cat /tmp/collabora_response
+              
+              echo
+              echo "5. Fixing WOPI URL configuration..."
+              echo "Setting wopi_url to http://collabora:9980..."
+              /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments wopi_url --value="http://collabora:9980"
+              
+              echo "Setting public_wopi_url to https://localhost:9980..."
+              /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments public_wopi_url --value="https://localhost:9980"
+              
+              echo "Disabling certificate verification..."
+              /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments disable_certificate_verification --value="yes"
+            fi
+          fi
+          
+          # Check Collabora logs
+          echo
+          echo "6. Checking Collabora container logs for errors..."
+          /opt/bin/docker-compose logs --tail=50 collabora | grep -i "error"
+          
+          # Check if Collabora is working from inside the container
+          echo
+          echo "7. Testing Collabora service from inside the container..."
+          /opt/bin/docker-compose exec collabora curl -s http://localhost:9980/ | grep -q "OK" && echo "✅ Collabora is working inside the container" || echo "❌ Collabora is not responding correctly inside its container"
+          
+          # Fix the permissions and restart
+          echo
+          echo "8. Applying fixes and restarting services..."
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ maintenance:repair
+          
+          # Restart Collabora and Nextcloud
+          echo
+          echo "9. Restarting services..."
+          /opt/bin/docker-compose restart collabora nextcloud
+          
+          echo
+          echo "10. Diagnostics complete. Please try opening office documents again."
+          echo "If issues persist, check detailed logs with: docker-compose logs collabora"
+          echo "==============================================="
+
+    - path: /opt/bin/restart-collabora.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Script to restart Collabora and reconfigure Nextcloud integration
+          
+          echo "Restarting Collabora and fixing Nextcloud integration..."
+          
+          cd /opt/nextcloud
+          
+          # Stop and remove Collabora container
+          /opt/bin/docker-compose stop collabora
+          /opt/bin/docker-compose rm -f collabora
+          
+          # Start a fresh instance
+          /opt/bin/docker-compose up -d collabora
+          
+          # Wait for Collabora to start
+          echo "Waiting for Collabora to start..."
+          sleep 10
+          
+          # Reconfigure Nextcloud
+          echo "Reconfiguring Nextcloud Office app..."
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:enable richdocuments
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments wopi_url --value="http://collabora:9980"
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments public_wopi_url --value="http://localhost:9980"
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments disable_certificate_verification --value="yes"
+          /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments use_groups --value=""
+          
+          echo "Restarting Nextcloud web server..."
+          /opt/bin/docker-compose exec nextcloud bash -c "kill -USR1 1" 
+          
+          echo "Done! Please try opening an office document now."
+
+    - path: /opt/bin/run-collabora-check.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Script to run Collabora check after a delay
+          echo "Waiting 60 seconds for services to fully initialize before running Collabora check..."
+          sleep 60
+          echo "Running Collabora diagnostic and setup script..."
+          /opt/bin/check-collabora.sh
+
 systemd:
   units:
-    # Enable Docker
     - name: docker.service
       enabled: true
-
-    # Download and setup Docker Compose
     - name: docker-compose-setup.service
       enabled: true
       contents: |
@@ -575,16 +730,15 @@ systemd:
         ExecStart=/bin/mkdir -p /opt/bin
         ExecStart=/bin/bash -c 'curl -L --connect-timeout 30 --max-time 300 -o /opt/bin/docker-compose "https://github.com/docker/compose/releases/download/v2.36.2/docker-compose-$(uname -s)-$(uname -m)"'
         ExecStart=/bin/chmod +x /opt/bin/docker-compose
+        # Don't try to symlink to /usr/local/bin which is read-only in Flatcar
+        # Instead, we'll use the PATH environment variable in other services
         TimeoutStartSec=360
         
         [Install]
         WantedBy=multi-user.target
 
-    # Enable systemd-sysext (for other extensions)
     - name: systemd-sysext.service
       enabled: true
-
-    # Setup Nextcloud directories and SSL
     - name: setup-nextcloud-dev.service
       enabled: true
       contents: |
@@ -605,7 +759,6 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
-    # Nextcloud development service
     - name: nextcloud-dev.service
       enabled: true
       contents: |
@@ -620,9 +773,11 @@ systemd:
         WorkingDirectory=/opt/nextcloud
         User=core
         Group=core
+        # Make sure /opt/bin is first in PATH for docker-compose
         Environment=PATH=/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
         
         # Always pull latest images in development
+        # Using explicit path to docker-compose since we can't symlink to /usr/local/bin
         ExecStartPre=/opt/bin/docker-compose pull
         ExecStartPre=-/opt/bin/docker-compose down
         ExecStart=/opt/bin/docker-compose up -d
@@ -637,7 +792,6 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
-    # Development log aggregation
     - name: nextcloud-dev-logs.service
       enabled: true
       contents: |
@@ -660,7 +814,6 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
-    # Quick access to development URLs
     - name: nextcloud-dev-info.service
       enabled: true
       contents: |
@@ -694,7 +847,6 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
-    # Install Nextcloud apps service
     - name: nextcloud-install-apps.service
       enabled: true
       contents: |
@@ -714,3 +866,34 @@ systemd:
         
         [Install]
         WantedBy=multi-user.target
+        
+    - name: run-collabora-check.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Run Collabora Check and Fix Script
+        After=nextcloud-install-apps.service
+        
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        WorkingDirectory=/opt/nextcloud
+        User=core
+        Group=core
+        Environment=PATH=/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+        ExecStart=/opt/bin/run-collabora-check.sh
+        
+        [Install]
+        WantedBy=multi-user.target
+        
+    - name: run-collabora-check.timer
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Run Collabora Check After Delay
+        
+        [Timer]
+        OnBootSec=3min
+        
+        [Install]
+        WantedBy=timers.target

@@ -8,6 +8,7 @@
 # - PostgreSQL 15 database (reliable, high-performance)
 # - Redis cache (session storage, file locking, memory cache)
 # - Adminer database management (development only)
+# - Collabora Online document server (for Nextcloud Office)
 #
 # NETWORKING:
 # All services communicate over a private Docker network for security.
@@ -83,8 +84,8 @@ services:
       - REDIS_HOST_PORT=6379
       
       # HTTPS configuration (when behind reverse proxy)
-      - OVERWRITEPROTOCOL=https
-      - OVERWRITECLIURL=https://${NEXTCLOUD_DOMAIN}
+      # - OVERWRITEPROTOCOL=https
+      # - OVERWRITECLIURL=https://${NEXTCLOUD_DOMAIN}
     depends_on:
       - db                         # Database must be ready first
       - redis                      # Cache must be available
@@ -167,6 +168,36 @@ services:
     # Username: nextcloud (or your POSTGRES_USER)
     # Password: (your POSTGRES_PASSWORD)
     # Database: nextcloud (or your POSTGRES_DB)
+
+  # -----------------------------------------------------------------------
+  # COLLABORA ONLINE DOCUMENT SERVER (CODE)
+  # -----------------------------------------------------------------------
+  # Provides collaborative document editing capabilities with Nextcloud Office
+  collabora:
+    image: collabora/code:latest
+    container_name: nextcloud-collabora
+    restart: unless-stopped
+    ports:
+      - "9980:9980"                # Office suite server
+    cap_add:
+      - MKNOD
+    environment:
+      - username=admin
+      - password=admin123
+      - dictionaries=en_US,en_GB,de_DE,es_ES,fr_FR,it_IT,pl_PL,nl_NL,ru_RU,pt_PT,pt_BR,cs_CZ,da_DK,sv_SE,nb_NO,fi_FI,hu_HU,ro_RO,sk_SK,hr_HR,sl_SI,el_GR,tr_TR,bg_BG,lt_LT,lv_LV,et_EE
+      - extra_params=--o:ssl.enable=false --o:ssl.termination=true
+      - server_name=localhost
+      - aliasgroup1=http://nextcloud:80
+      - aliasgroup2=http://nginx:80
+      - aliasgroup3=https://localhost:443
+      - TZ=Europe/Berlin
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9980/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - nextcloud-network
 
 # =========================================================================
 # DOCKER VOLUMES
