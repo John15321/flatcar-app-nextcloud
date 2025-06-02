@@ -11,7 +11,7 @@ rules:
 
   # Indentation - enforce 2-space indentation
   indentation:
-    spaces: 2
+    spaces: 4
     indent-sequences: true
 
   # Truthy values - allow common variations

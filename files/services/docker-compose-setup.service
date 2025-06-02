@@ -1,0 +1,19 @@
+[Unit]
+Description=Download Docker Compose binary
+After=network-online.target
+Wants=network-online.target
+ConditionFirstBoot=true
+ConditionPathExists=!/opt/bin/docker-compose
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/mkdir -p /opt/bin
+ExecStart=/bin/bash -c 'curl -L --connect-timeout 30 --max-time 300 -o /opt/bin/docker-compose "https://github.com/docker/compose/releases/download/v2.36.2/docker-compose-$(uname -s)-$(uname -m)"'
+ExecStart=/bin/chmod +x /opt/bin/docker-compose
+# Don't try to symlink to /usr/local/bin which is read-only in Flatcar
+# Instead, we'll use the PATH environment variable in other services
+TimeoutStartSec=360
+
+[Install]
+WantedBy=multi-user.target
