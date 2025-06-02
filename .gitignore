@@ -1,6 +1,6 @@
 # QEMU disk images
-.img
-.img.fresh
+*.img
+*.img.fresh
 
 # Local validation artifacts
 .validation-output/
