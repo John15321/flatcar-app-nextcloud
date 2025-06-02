@@ -181,43 +181,27 @@ systemd:
 
       - name: docker-compose-setup.service
         enabled: true
-        # contents:
-        #   local: ./services/docker-compose-setup.service
 
       - name: systemd-sysext.service
         enabled: true
 
       - name: setup-nextcloud-dev.service
         enabled: true
-        # contents:
-        #   local: ./services/setup-nextcloud-dev.service
 
       - name: nextcloud-dev.service
         enabled: true
-        # contents:
-        #   local: ./services/nextcloud-dev.service
 
       - name: nextcloud-dev-logs.service
         enabled: true
-        # contents:
-        #   local: ./services/nextcloud-dev-logs.service
 
       - name: nextcloud-dev-info.service
         enabled: true
-        # contents:
-        #   local: ./services/nextcloud-dev-info.service
 
       - name: nextcloud-install-apps.service
         enabled: true
-        # contents:
-        #   local: ./services/nextcloud-install-apps.service
 
       - name: run-collabora-check.service
         enabled: true
-        # contents:
-        #   local: ./services/run-collabora-check.service
 
       - name: run-collabora-check.timer
         enabled: true
-        # contents:
-        #   local: ./services/run-collabora-check.timer
