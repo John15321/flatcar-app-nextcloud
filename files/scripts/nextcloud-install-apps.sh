@@ -1,36 +1,36 @@
 #!/bin/bash
-# Script to install essential Nextcloud apps after initial setup
-
-echo "Installing essential Nextcloud apps..."
+# Install and configure essential Nextcloud apps
 
 cd /opt/nextcloud
 
-# Wait for Nextcloud to be fully initialized
-echo "Waiting for Nextcloud to initialize..."
-attempt=0
-max_attempts=30
+echo "Installing and configuring Nextcloud apps..."
 
-until /opt/bin/docker-compose exec -T -u www-data nextcloud php occ status | grep -q "installed: true" || [ $attempt -ge $max_attempts ]
-do
-echo "Waiting for Nextcloud initialization... ($((attempt+1))/$max_attempts)"
-sleep 10
-attempt=$((attempt+1))
-done
+# Wait for Nextcloud to be fully ready
+echo "Waiting for Nextcloud to be ready..."
+sleep 30
 
-if [ $attempt -ge $max_attempts ]; then
-echo "Nextcloud initialization timed out. Please check logs."
-exit 1
-fi
+# Install Nextcloud Office (richdocuments)
+echo "Installing Nextcloud Office app..."
+/opt/bin/docker-compose exec -u www-data nextcloud php occ app:install richdocuments
 
-echo "Nextcloud initialized. Installing apps..."
+# Enable the app
+echo "Enabling Nextcloud Office app..."
+/opt/bin/docker-compose exec -u www-data nextcloud php occ app:enable richdocuments
 
-# Core Productivity & Collaboration apps
-/opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install spreed || true  # Nextcloud Talk
-/opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install mail || true    # Nextcloud Mail
-/opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install calendar || true # Calendar
-/opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install richdocuments || true # Nextcloud Office
-/opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install deck || true    # Kanban boards
+# Configure Collabora Online server
+echo "Configuring Collabora Online server..."
+/opt/bin/docker-compose exec -u www-data nextcloud php occ config:app:set richdocuments wopi_url --value="http://collabora:9980"
+/opt/bin/docker-compose exec -u www-data nextcloud php occ config:app:set richdocuments disable_certificate_verification --value="yes"
 
+# Set public WOPI URL for browser access
+/opt/bin/docker-compose exec -u www-data nextcloud php occ config:app:set richdocuments public_wopi_url --value="http://localhost:9980"
+
+# Enable experimental apps if needed
+echo "Enabling experimental app support..."
+/opt/bin/docker-compose exec -u www-data nextcloud php occ config:system:set appstoreenabled --value=true --type=boolean
+
+echo "Nextcloud apps installation completed!"
+echo "You may need to refresh your browser and check Settings > Administration > Nextcloud Office"
 # Security & Access Management
 /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install passwords || true # Password manager
 /opt/bin/docker-compose exec -T -u www-data nextcloud php occ app:install twofactor_totp || true # 2FA

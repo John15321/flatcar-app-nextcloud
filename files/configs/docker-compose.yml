@@ -180,16 +180,18 @@ services:
       - "9980:9980"                # Office suite server
     cap_add:
       - MKNOD
+      - SYS_ADMIN                  # Required for mount namespaces and bind mounts
+      - SYS_CHROOT                 # Required for chroot jail operations
+    security_opt:
+      - apparmor:unconfined        # Disable AppArmor restrictions for mount operations
     environment:
       - username=admin
       - password=admin123
       - dictionaries=en_US,en_GB,de_DE,es_ES,fr_FR,it_IT,pl_PL,nl_NL,ru_RU,pt_PT,pt_BR,cs_CZ,da_DK,sv_SE,nb_NO,fi_FI,hu_HU,ro_RO,sk_SK,hr_HR,sl_SI,el_GR,tr_TR,bg_BG,lt_LT,lv_LV,et_EE
-      - extra_params=--o:ssl.enable=false --o:ssl.termination=true
+      - extra_params=--o:ssl.enable=false --o:ssl.termination=true --o:net.frame_ancestors=localhost:*,127.0.0.1:*,10.0.2.15:*,192.168.1.100:*
+      - domain=nextcloud-app|nextcloud
+      - DONT_GEN_SSL_CERT=1
       - server_name=localhost
-      - aliasgroup1=http://nextcloud:80
-      - aliasgroup2=http://nginx:80
-      - aliasgroup3=https://localhost:443
-      - TZ=Europe/Berlin
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9980/"]
       interval: 30s

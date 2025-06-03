@@ -69,8 +69,8 @@ else
     echo "Setting wopi_url to http://collabora:9980..."
     /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments wopi_url --value="http://collabora:9980"
     
-    echo "Setting public_wopi_url to https://localhost:9980..."
-    /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments public_wopi_url --value="https://localhost:9980"
+    echo "Setting public_wopi_url to http://localhost:9980..."
+    /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments public_wopi_url --value="http://localhost:9980"
     
     echo "Disabling certificate verification..."
     /opt/bin/docker-compose exec -T -u www-data nextcloud php occ config:app:set richdocuments disable_certificate_verification --value="yes"
@@ -101,3 +101,55 @@ echo
 echo "10. Diagnostics complete. Please try opening office documents again."
 echo "If issues persist, check detailed logs with: docker-compose logs collabora"
 echo "==============================================="
+
+echo "=== Collabora Online Status Check ==="
+echo
+
+# Check if Collabora container is running
+echo "1. Container Status:"
+if docker ps | grep -q nextcloud-collabora; then
+    echo "✓ Collabora container is running"
+else
+    echo "✗ Collabora container is not running"
+    exit 1
+fi
+
+# Check if Collabora is responding
+echo
+echo "2. Service Health Check:"
+if curl -f http://localhost:9980/ > /dev/null 2>&1; then
+    echo "✓ Collabora is responding on port 9980"
+else
+    echo "✗ Collabora is not responding on port 9980"
+fi
+
+# Check Collabora discovery endpoint
+echo
+echo "3. Discovery Endpoint Check:"
+if curl -f http://localhost:9980/hosting/discovery > /dev/null 2>&1; then
+    echo "✓ Collabora discovery endpoint is accessible"
+else
+    echo "✗ Collabora discovery endpoint is not accessible"
+fi
+
+# Check Nextcloud Collabora app status
+echo
+echo "4. Nextcloud Collabora App Status:"
+cd /opt/nextcloud
+if /opt/bin/docker-compose exec -u www-data nextcloud php occ app:list | grep -q richdocuments; then
+    echo "✓ Nextcloud Office app is installed"
+    
+    # Check if it's enabled
+    if /opt/bin/docker-compose exec -u www-data nextcloud php occ app:list --enabled | grep -q richdocuments; then
+        echo "✓ Nextcloud Office app is enabled"
+    else
+        echo "✗ Nextcloud Office app is disabled"
+    fi
+else
+    echo "✗ Nextcloud Office app is not installed"
+fi
+
+echo
+echo "=== Configuration Check ==="
+echo "Collabora should be accessible at: http://localhost:9980"
+echo "Nextcloud should be configured to use Collabora at: http://collabora:9980"

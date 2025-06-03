@@ -68,7 +68,7 @@ storage:
         mode: 0755
     files:
 
-# CONFIGURATION FILES
+      # CONFIGURATION FILES
 
       - path: /opt/nextcloud/.env
         mode: 0600 # Secure file permissions
@@ -85,7 +85,7 @@ storage:
         contents:
             local: ./nginx/nextcloud.conf
 
-# SHELL SCRIPTS
+      # SHELL SCRIPTS
 
       - path: /opt/bin/generate-dev-ssl.sh
         mode: 0755

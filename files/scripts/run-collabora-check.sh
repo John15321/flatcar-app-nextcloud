@@ -1,6 +1,14 @@
 #!/bin/bash
-# Script to run Collabora check after a delay
-echo "Waiting 60 seconds for services to fully initialize before running Collabora check..."
-sleep 60
-echo "Running Collabora diagnostic and setup script..."
-/opt/bin/check-collabora.sh
+# Periodic Collabora health check and auto-restart if needed
+
+LOG_FILE="/var/log/nextcloud/collabora-check.log"
+
+echo "$(date): Starting Collabora health check" >> "$LOG_FILE"
+
+# Check if Collabora is responding
+if ! curl -f http://localhost:9980/ > /dev/null 2>&1; then
+    echo "$(date): Collabora not responding, attempting restart" >> "$LOG_FILE"
+    /opt/bin/restart-collabora.sh >> "$LOG_FILE" 2>&1
+else
+    echo "$(date): Collabora is healthy" >> "$LOG_FILE"
+fi
