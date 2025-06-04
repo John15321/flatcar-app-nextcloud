@@ -1,207 +1,118 @@
 # =========================================================================
-# NEXTCLOUD DEVELOPMENT CONFIGURATION FOR FLATCAR CONTAINER LINUX
+# SIMPLIFIED NEXTCLOUD DEVELOPMENT SETUP FOR FLATCAR CONTAINER LINUX
 # =========================================================================
 #
-# This Butane configuration creates a development-friendly Nextcloud setup
-# optimized for local testing, learning, and development work with:
+# This simplified Butane configuration creates a basic Nextcloud development
+# environment optimized for quick setup and testing:
 #
-# DEVELOPMENT FEATURES:
+# FEATURES:
+# - Direct Nextcloud access (no reverse proxy)
 # - Simple, memorable passwords (admin/admin123)
-# - Adminer database management interface (:8081)
-# - Exposed database ports for external tools
-# - Multiple trusted domains for local access
-# - Lower resource requirements
+# - PostgreSQL database with Redis cache
+# - Adminer for database management
+# - Essential utility scripts only
 #
 # ARCHITECTURE:
-# - Nextcloud (latest) with PostgreSQL 15 and Redis 7
-# - Nginx reverse proxy for production-like setup
-# - All data stored on root filesystem (no additional disk needed)
-# - Development tools included (Adminer)
-#
-# INTENDED USE:
-# - Local development on laptop/PC
-# - Testing Nextcloud configurations
-# - Learning how the system works
-# - Debugging and troubleshooting
-#
-# NOT FOR PRODUCTION:
-# - Simple passwords are insecure
-# - Exposed database ports
-# - Development tools included
-# - Less restrictive security settings
+# - Nextcloud (latest) + PostgreSQL 15 + Redis 7
+# - Direct access via port 8080
+# - Minimal services for faster startup
+# - Optional Collabora add-on available separately
 #
 # QUICK START:
-# 1. Replace "your-ssh-key-here" with your SSH public key
+# 1. Replace SSH key below with your public key
 # 2. Convert: butane --pretty --strict nextcloud-development.yaml > dev.ign
-# 3. Run: ./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081 -f 9980:9980 -- -display curses -snapshot
+# 3. Run: ./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081
 # 4. Access: http://localhost:8080 (admin/admin123)
-# 5. Wait for app installation to complete (may take several minutes)
 #
 # =========================================================================
 
 variant: flatcar
 version: 1.0.0
 
-# Development configuration for Nextcloud on Flatcar Linux
-# This configuration is optimized for development and testing
-
-# USER CONFIGURATION
-# Uses the default 'core' user for simplicity in development
 passwd:
-    users:
-      - name: core # Default Flatcar user
-        groups:
-          - docker # Access to Docker daemon
-          - sudo # Administrative privileges
-        ssh_authorized_keys:
-          - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCZ7dEyYafGSvGj8Unm3LaveXEJMe07KN0WOgeA8Ippq3zP/PBCii243YwQEZUtbUkbiSmUxFMeNWbIUEoRCOrZ+G+79cpxHKRfOcp8waFE8ZtcTmpxEuSKK3FTCi0cEL9imKbOU61JSfpjj+ad7//VJ0g8lp2I03Re0OxiqXcMPjnvO8Bnj8WS6w5TMj8utxhY1a6blJeb8YL+zOV7hlumd0W3u3pektGTq2MavuRj1Oookyc7H4ku9oX5ieomT8qJCWY+LB0WaDlIY+qx6IlzIFpDq3g6oq8XgW5Qqq+zloirieudxWh0Y5xIbG6Ur17XDBfyItsVQAxXS0uFbC6yMvVE6F91vMVseurKx3THlzytVPyKmEBf4K0DHenQ1npCPn27HHMzXbUUEZQmftGrEhWCb1UkeupOSm0QgJcIJxUlPpPH+uCC5BXfDYDhlVjmIOhcYWRz8mWoNtdB9wN3Kb12uZYgJYGGEZCQySruzjVbj7mq/VAnimpOt5G2RRQ29TPdRatWTXXyopwlX1DKEk+37RmQZJcqq1BzFntUV3+kdEzCmFIcaXYueMPhx9uYdKUof1E22VyBZCjVUWLALZphKX8YoFsmMfFH0Rs5UcWrcP9rWohk3ee8u+T3h+o0CBvdYenDSOTTlOoQwTaa58Lp8nTQK1kuXM44DeAelQ== jan@jan-B550-GAMING-X-V2"
-          # Add your public SSH key above - generate with: ssh-keygen -t ed25519
-          # This allows SSH access: ssh -p 2222 core@localhost
+  users:
+  - name: core
+    groups:
+    - docker
+    - sudo
+    ssh_authorized_keys:
+    - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCZ7dEyYafGSvGj8Unm3LaveXEJMe07KN0WOgeA8Ippq3zP/PBCii243YwQEZUtbUkbiSmUxFMeNWbIUEoRCOrZ+G+79cpxHKRfOcp8waFE8ZtcTmpxEuSKK3FTCi0cEL9imKbOU61JSfpjj+ad7//VJ0g8lp2I03Re0OxiqXcMPjnvO8Bnj8WS6w5TMj8utxhY1a6blJeb8YL+zOV7hlumd0W3u3pektGTq2MavuRj1Oookyc7H4ku9oX5ieomT8qJCWY+LB0WaDlIY+qx6IlzIFpDq3g6oq8XgW5Qqq+zloirieudxWh0Y5xIbG6Ur17XDBfyItsVQAxXS0uFbC6yMvVE6F91vMVseurKx3THlzytVPyKmEBf4K0DHenQ1npCPn27HHMzXbUUEZQmftGrEhWCb1UkeupOSm0QgJcIJxUlPpPH+uCC5BXfDYDhlVjmIOhcYWRz8mWoNtdB9wN3Kb12uZYgJYGGEZCQySruzjVbj7mq/VAnimpOt5G2RRQ29TPdRatWTXXyopwlX1DKEk+37RmQZJcqq1BzFntUV3+kdEzCmFIcaXYueMPhx9uYdKUof1E22VyBZCjVUWLALZphKX8YoFsmMfFH0Rs5UcWrcP9rWohk3ee8u+T3h+o0CBvdYenDSOTTlOoQwTaa58Lp8nTQK1kuXM44DeAelQ== jan@jan-B550-GAMING-X-V2"
+    # Replace with your SSH public key
 
 storage:
-    directories:
-      - path: /opt/nextcloud # Main application directory
-        mode: 0755
-      - path: /opt/bin # Development scripts directory
-        mode: 0755
-      - path: /var/log/nextcloud # Centralized logging
-        mode: 0755
-    files:
+  directories:
+  - path: /opt/nextcloud
+    mode: 493 # 0755 in decimal
+  - path: /opt/bin
+    mode: 493 # 0755 in decimal
+  files:
+  # Configuration files
+  - path: /opt/nextcloud/.env
+    mode: 384 # 0600 in decimal
+    contents:
+      local: configs/.env
 
-      # CONFIGURATION FILES
+  - path: /opt/nextcloud/docker-compose.yml
+    mode: 420 # 0644 in decimal
+    contents:
+      local: configs/docker-compose.yml
 
-      - path: /opt/nextcloud/.env
-        mode: 0600 # Secure file permissions
-        contents:
-            local: ./configs/.env
+  # Optional Collabora add-on
+  - path: /opt/nextcloud/docker-compose.collabora.yml
+    mode: 420 # 0644 in decimal
+    contents:
+      local: configs/docker-compose.collabora.yml
 
-      - path: /opt/nextcloud/docker-compose.yml
-        mode: 0644
-        contents:
-            local: ./configs/docker-compose.yml
+  # Essential utility scripts
+  - path: /opt/bin/nextcloud-logs.sh
+    mode: 493 # 0755 in decimal
+    contents:
+      local: scripts/nextcloud-logs.sh
 
-      - path: /opt/nextcloud/nginx/nextcloud.conf
-        mode: 0644
-        contents:
-            local: ./nginx/nextcloud.conf
+  - path: /opt/bin/nextcloud-shell.sh
+    mode: 493 # 0755 in decimal
+    contents:
+      local: scripts/nextcloud-shell.sh
 
-      # SHELL SCRIPTS
+  - path: /opt/bin/nextcloud-occ.sh
+    mode: 493 # 0755 in decimal
+    contents:
+      local: scripts/nextcloud-occ.sh
 
-      - path: /opt/bin/generate-dev-ssl.sh
-        mode: 0755
-        contents:
-            local: ./scripts/generate-dev-ssl.sh
+  - path: /opt/bin/nextcloud-reset.sh
+    mode: 493 # 0755 in decimal
+    contents:
+      local: scripts/nextcloud-reset.sh
 
-      - path: /opt/bin/nextcloud-logs.sh
-        mode: 0755
-        contents:
-            local: ./scripts/nextcloud-logs.sh
+  # Systemd services
+  - path: /etc/systemd/system/docker-compose-setup.service
+    mode: 420 # 0644 in decimal
+    contents:
+      local: services/docker-compose-setup.service
 
-      - path: /opt/bin/nextcloud-shell.sh
-        mode: 0755
-        contents:
-            local: ./scripts/nextcloud-shell.sh
+  - path: /etc/systemd/system/setup-nextcloud-dev.service
+    mode: 420 # 0644 in decimal
+    contents:
+      local: services/setup-nextcloud-dev.service
 
-      - path: /opt/bin/nextcloud-occ.sh
-        mode: 0755
-        contents:
-            local: ./scripts/nextcloud-occ.sh
-
-      - path: /opt/bin/nextcloud-reset.sh
-        mode: 0755
-        contents:
-            local: ./scripts/nextcloud-reset.sh
-
-      - path: /opt/bin/nextcloud-install-apps.sh
-        mode: 0755
-        contents:
-            local: ./scripts/nextcloud-install-apps.sh
-
-      - path: /opt/bin/check-collabora.sh
-        mode: 0755
-        contents:
-            local: ./scripts/check-collabora.sh
-
-      - path: /opt/bin/restart-collabora.sh
-        mode: 0755
-        contents:
-            local: ./scripts/restart-collabora.sh
-
-      - path: /opt/bin/run-collabora-check.sh
-        mode: 0755
-        contents:
-            local: ./scripts/run-collabora-check.sh
-
-      # SYSTEMD SERVICE CONFIGURATION FILES
-
-      - path: /etc/systemd/system/docker-compose-setup.service
-        mode: 0644
-        contents:
-            local: ./services/docker-compose-setup.service
-
-      - path: /etc/systemd/system/setup-nextcloud-dev.service
-        mode: 0644
-        contents:
-            local: ./services/setup-nextcloud-dev.service
-
-      - path: /etc/systemd/system/nextcloud-dev.service
-        mode: 0644
-        contents:
-            local: ./services/nextcloud-dev.service
-
-      - path: /etc/systemd/system/nextcloud-dev-logs.service
-        mode: 0644
-        contents:
-            local: ./services/nextcloud-dev-logs.service
-
-      - path: /etc/systemd/system/nextcloud-dev-info.service
-        mode: 0644
-        contents:
-            local: ./services/nextcloud-dev-info.service
-
-      - path: /etc/systemd/system/nextcloud-install-apps.service
-        mode: 0644
-        contents:
-            local: ./services/nextcloud-install-apps.service
-
-      - path: /etc/systemd/system/run-collabora-check.service
-        mode: 0644
-        contents:
-            local: ./services/run-collabora-check.service
-
-      - path: /etc/systemd/system/run-collabora-check.timer
-        mode: 0644
-        contents:
-            local: ./services/run-collabora-check.timer
+  - path: /etc/systemd/system/nextcloud-dev.service
+    mode: 420 # 0644 in decimal
+    contents:
+      local: services/nextcloud-dev.service
 
 systemd:
-    units:
-      - name: docker.service
-        enabled: true
+  units:
+  - name: docker.service
+    enabled: true
 
-      - name: docker-compose-setup.service
-        enabled: true
+  - name: docker-compose-setup.service
+    enabled: true
 
-      - name: systemd-sysext.service
-        enabled: true
+  - name: systemd-sysext.service
+    enabled: true
 
-      - name: setup-nextcloud-dev.service
-        enabled: true
+  - name: setup-nextcloud-dev.service
+    enabled: true
 
-      - name: nextcloud-dev.service
-        enabled: true
-
-      - name: nextcloud-dev-logs.service
-        enabled: true
-
-      - name: nextcloud-dev-info.service
-        enabled: true
-
-      - name: nextcloud-install-apps.service
-        enabled: true
-
-      - name: run-collabora-check.service
-        enabled: true
-
-      - name: run-collabora-check.timer
-        enabled: true
+  - name: nextcloud-dev.service
+    enabled: true

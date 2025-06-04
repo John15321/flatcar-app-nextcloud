@@ -1,8 +1,0 @@
-[Unit]
-Description=Run Collabora Check After Delay
-
-[Timer]
-OnBootSec=3min
-
-[Install]
-WantedBy=timers.target

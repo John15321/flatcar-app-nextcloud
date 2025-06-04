@@ -50,11 +50,12 @@ jobs:
       - name: "Validate Docker Compose File"
         run: |
           echo "Validating docker-compose.yml..."
+          cd files/configs
           docker-compose config --quiet
           echo "✅ Docker Compose file is valid"
 
   validate-flatcar-configs:
-    name: "Validate Flatcar Configurations"
+    name: "Validate Flatcar Configuration"
     runs-on: ubuntu-latest
     
     steps:
@@ -75,32 +76,25 @@ jobs:
           # Verify installation
           butane --version
           
-      - name: "Validate Production Configuration"
-        run: |
-          echo "Validating nextcloud-production.yaml..."
-          butane --pretty --strict nextcloud-production.yaml > /dev/null
-          echo "✅ Production configuration is valid"
-          
       - name: "Validate Development Configuration"
         run: |
           echo "Validating nextcloud-development.yaml..."
           butane --pretty --strict nextcloud-development.yaml > /dev/null
           echo "✅ Development configuration is valid"
           
-      - name: "Generate Ignition Files (Artifact)"
+      - name: "Generate Ignition File (Artifact)"
         run: |
-          echo "Generating Ignition files for validation..."
+          echo "Generating Ignition file for validation..."
           mkdir -p ignition-artifacts
           
-          butane --pretty --strict nextcloud-production.yaml > ignition-artifacts/nextcloud-production.ign
-          butane --pretty --strict nextcloud-development.yaml > ignition-artifacts/nextcloud-development.ign
+          butane --pretty --strict nextcloud-development.yaml > ignition-artifacts/dev.ign
           
-          echo "Generated Ignition files:"
+          echo "Generated Ignition file:"
           ls -la ignition-artifacts/
           
       - name: "Upload Ignition Artifacts"
         uses: actions/upload-artifact@v3
         with:
-          name: ignition-configs
+          name: ignition-config
           path: ignition-artifacts/
           retention-days: 30

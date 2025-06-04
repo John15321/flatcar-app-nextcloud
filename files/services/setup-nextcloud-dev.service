@@ -8,8 +8,7 @@ ConditionFirstBoot=true
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/mkdir -p /opt/nextcloud/data /opt/nextcloud/config /opt/nextcloud/apps
-ExecStart=/bin/mkdir -p /opt/nextcloud/db /opt/nextcloud/redis /opt/nextcloud/ssl
-ExecStart=/opt/bin/generate-dev-ssl.sh
+ExecStart=/bin/mkdir -p /opt/nextcloud/db /opt/nextcloud/redis
 ExecStart=/bin/chown -R core:core /opt/nextcloud
 
 [Install]

@@ -5,38 +5,37 @@
 
 # Default target
 help:
-	@echo "🚀 Flatcar Nextcloud Project Commands"
-	@echo "======================================"
-	@echo ""
-	@echo "Validation Commands:"
-	@echo "  make validate          - Run basic validation (minimal dependencies)"
-	@echo "  make validate-full     - Run comprehensive validation (all tools required)"
-	@echo "  make docker-validate   - Validate Docker Compose configuration only"
-	@echo ""
-	@echo "Setup Commands:"
-	@echo "  make install-deps      - Install Python dependencies (yamllint)"
-	@echo "  make clean             - Clean validation artifacts"
+	@echo "🚀 Simplified Flatcar Nextcloud Project Commands"
+	@echo "==============================================="
 	@echo ""
 	@echo "Development Commands:"
-	@echo "  make dev-vm            - Start development VM"
-	@echo "  make ignition-prod     - Generate production Ignition file"
+	@echo "  make dev-vm            - Start simplified development VM"
 	@echo "  make ignition-dev      - Generate development Ignition file"
 	@echo ""
+	@echo "Validation Commands:"
+	@echo "  make validate          - Run basic validation"
+	@echo "  make docker-validate   - Validate Docker Compose configuration"
+	@echo "  make ci                - Run all validations"
+	@echo ""
+	@echo "Setup Commands:"
+	@echo "  make clean             - Clean generated files"
+	@echo "  make install-deps      - Install dependencies"
+	@echo ""
 
-# Basic validation (minimal dependencies)
+# Basic validation
 validate:
-	@echo "🧪 Running basic validation..."
-	@./scripts/validate-basic.sh
-
-# Comprehensive validation (requires all tools)
-validate-full:
-	@echo "🔍 Running comprehensive validation..."
-	@./scripts/validate-yaml.sh
+	@echo "🧪 Running validation..."
+	@echo "1. YAML syntax..."
+	@yamllint -c .yamllint.yml *.yaml *.yml || echo "⚠️ yamllint not found - install with: pip3 install --user yamllint"
+	@echo "2. Docker Compose..."
+	@docker-compose -f files/configs/docker-compose.yml config --quiet && echo "✅ Docker Compose is valid"
+	@echo "3. Butane configuration..."
+	@butane --strict --files-dir=files nextcloud-development.yaml > /dev/null && echo "✅ Butane configuration is valid"
 
 # Docker Compose validation only
 docker-validate:
 	@echo "🐳 Validating Docker Compose configuration..."
-	@docker-compose config --quiet && echo "✅ Docker Compose is valid"
+	@docker-compose -f files/configs/docker-compose.yml config --quiet && echo "✅ Docker Compose is valid"
 
 # Install Python dependencies
 install-deps:
@@ -56,22 +55,19 @@ clean:
 	@rm -f *.ign
 	@echo "✅ Cleanup complete"
 
-# Generate production Ignition file
-ignition-prod:
-	@echo "⚙️  Generating production Ignition configuration..."
-	@butane --pretty --strict nextcloud-production.yaml > nextcloud-production.ign
-	@echo "✅ Generated: nextcloud-production.ign"
-
-# Generate development Ignition file
+# Remove production targets and update CI
 ignition-dev:
 	@echo "⚙️  Generating development Ignition configuration..."
-	@butane --pretty --strict nextcloud-development.yaml > nextcloud-development.ign
-	@echo "✅ Generated: nextcloud-development.ign"
+	@butane --pretty --strict --files-dir=files nextcloud-development.yaml > dev.ign
+	@echo "✅ Generated: dev.ign"
 
 # Start development VM
 dev-vm:
-	@echo "🖥️  Starting development VM..."
-	@./flatcar_production_qemu.sh
+	@echo "🖥️  Starting simplified development VM..."
+	@echo "📝 Generating Ignition config..."
+	@butane --pretty --strict --files-dir=files nextcloud-development.yaml > dev.ign
+	@echo "🚀 Launching VM (Nextcloud: :8080, Adminer: :8081)..."
+	@./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081
 
 # Quick lint check
 lint:
@@ -84,8 +80,10 @@ ci:
 	@echo "1. YAML Syntax validation..."
 	@yamllint -c .yamllint.yml *.yaml *.yml
 	@echo "2. Docker Compose validation..."
-	@docker-compose config --quiet
-	@echo "3. Flatcar configuration validation..."
+	@docker-compose -f files/configs/docker-compose.yml config --quiet
+	@echo "3. Butane configuration validation..."
+	@butane --strict --files-dir=files nextcloud-development.yaml > /dev/null
+	@echo "✅ All CI validations passed!"
 	@butane --strict nextcloud-production.yaml > /dev/null
 	@butane --strict nextcloud-development.yaml > /dev/null
 	@echo "✅ All CI validations passed!"
