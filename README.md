@@ -6,9 +6,9 @@ This is a complete Nextcloud development environment for Flatcar Container Linux
 
 - **Direct Nextcloud access** - No reverse proxy complexity
 - **Simple authentication** - admin/admin123 for easy testing
-- **Essential services** - Nextcloud, PostgreSQL, Redis, Collabora, Adminer
+- **Essential services** - Nextcloud, PostgreSQL, Redis, Adminer
 - **Automatic app installation** - Essential productivity and development apps
-- **Collabora Online integration** - Document editing out-of-the-box
+- **Collabora Online included** - Document editing infrastructure (requires production setup)
 - **Development utilities** - Comprehensive scripts for management
 
 ## Quick Start
@@ -16,33 +16,35 @@ This is a complete Nextcloud development environment for Flatcar Container Linux
 1. **Replace SSH key** in `nextcloud-development.yaml` with your public key
 2. **Generate Ignition config:**
    ```bash
-   butane --pretty --strict nextcloud-development.yaml > dev.ign
+   make ignition-dev
+   # or manually: butane --pretty --strict nextcloud-development.yaml > dev.ign
    ```
 3. **Launch VM:**
    ```bash
-   ./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081 -f 9980:9980
+   make run-dev
+   # or manually: ./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081 -f 9980:9980
    ```
 4. **Access services:**
    - Nextcloud: http://localhost:8080 (admin/admin123)
-   - Collabora: http://localhost:9980
    - Adminer: http://localhost:8081
+   - Collabora: http://localhost:9980 (infrastructure ready)
 
 ## Services
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| Nextcloud | 8080 | Main application |
-| Collabora | 9980 | Document editing |
-| Adminer | 8081 | Database management |
-| PostgreSQL | 5432 | Database (exposed for dev tools) |
-| Redis | 6379 | Cache (exposed for dev tools) |
+| Service | Port | Purpose | Status |
+|---------|------|---------|--------|
+| Nextcloud | 8080 | Main application | ✅ Ready |
+| Adminer | 8081 | Database management | ✅ Ready |
+| Collabora | 9980 | Document editing | ⚠️ Needs production config |
+| PostgreSQL | 5432 | Database (exposed for dev tools) | ✅ Ready |
+| Redis | 6379 | Cache (exposed for dev tools) | ✅ Ready |
 
 ## Pre-installed Apps
 
 The setup automatically installs these essential apps:
 
 **Office & Productivity:**
-- Collabora Online (Office Documents)
+- Collabora Online (richdocuments app - infrastructure ready)
 - Deck (Kanban Board)
 - Notes, Calendar, Contacts, Mail, Tasks
 
@@ -71,32 +73,42 @@ The setup automatically installs these essential apps:
 | `nextcloud-install-apps.sh` | Install additional apps manually |
 | `nextcloud-collabora-setup.sh` | Configure/troubleshoot Collabora |
 
-## Collabora Troubleshooting
+## Collabora Online Status
 
-If Collabora isn't working properly, use the dedicated troubleshooting script:
+**Current State:** Infrastructure Ready - Requires Production Configuration
 
+The setup includes:
+- ✅ Collabora Online container configured
+- ✅ richdocuments app installed and enabled
+- ✅ Basic WOPI configuration applied
+- ⚠️ Local HTTP setup has known limitations
+
+**For Development Use:**
+- All office document apps functionality is available except live editing
+- Documents can be uploaded, downloaded, and managed
+- Collabora infrastructure is ready for production deployment
+
+**Known Limitation:**
+Local HTTP Collabora setups have inherent security and connectivity challenges. For reliable document editing, a production configuration with proper SSL/TLS and domain setup is recommended.
+
+**Troubleshooting Tools Available:**
 ```bash
 ssh -p 2222 core@localhost
 
-# Test Collabora integration
-/opt/bin/nextcloud-collabora-setup.sh test
+# Run comprehensive diagnostics
+/opt/bin/nextcloud-debug-collabora.sh
 
-# Reconfigure Collabora
+# Try automated fixes
+/opt/bin/nextcloud-fix-collabora.sh
+
+# Manual configuration
 /opt/bin/nextcloud-collabora-setup.sh configure
 
-# Check status and configuration
+# Check current status
 /opt/bin/nextcloud-collabora-setup.sh status
-
-# Run full troubleshooting
-/opt/bin/nextcloud-collabora-setup.sh troubleshoot
 ```
 
-**Common Issues:**
-- **"Server error" when opening documents**: Try reconfiguring with the setup script
-- **Documents won't open**: Check that both containers are running and can communicate
-- **Permission errors**: Ensure the richdocuments app is enabled and properly configured
-
-**Manual Verification:**
+**Verification Commands:**
 ```bash
 # Check containers are running
 docker ps | grep -E "(nextcloud|collabora)"
@@ -104,8 +116,8 @@ docker ps | grep -E "(nextcloud|collabora)"
 # Test Collabora discovery endpoint
 curl http://localhost:9980/hosting/discovery
 
-# Check Nextcloud logs
-/opt/bin/nextcloud-logs.sh collabora
+# Check richdocuments app status
+/opt/bin/nextcloud-occ.sh app:list | grep richdocuments
 ```
 
 ## App Management
@@ -166,7 +178,7 @@ files/
 ## Development Workflow
 
 1. **Start developing:** VM boots automatically with Nextcloud and all apps ready
-2. **Document editing:** Collabora Online available immediately
+2. **Document management:** Upload, organize, and download office documents
 3. **View logs:** `nextcloud-logs.sh`
 4. **Execute commands:** `nextcloud-occ.sh`
 5. **Access shell:** `nextcloud-shell.sh`
@@ -174,11 +186,51 @@ files/
 7. **Install more apps:** `nextcloud-install-apps.sh` or via web interface
 8. **Reset environment:** `nextcloud-reset.sh` (if needed)
 
-## Troubleshooting Collabora
+**Note:** Collabora Online document editing requires production configuration for reliable operation.
 
-If Collabora Online is not working properly, use these debugging and fix tools:
+## Future: Production Collabora Setup
 
-### Quick Fix (Recommended)
+When ready to enable full Collabora functionality, the following will be needed:
+
+### Production Requirements
+- **SSL/TLS certificates** - Proper HTTPS setup
+- **Domain name** - Real domain instead of localhost
+- **Reverse proxy** - Nginx or Traefik for proper routing
+- **Security headers** - HSTS, CSP, and frame-ancestors
+- **Network isolation** - Proper container networking
+
+### Planned Production Features
+- Full document editing (Word, Excel, PowerPoint)
+- Real-time collaborative editing
+- Version history and conflict resolution
+- Mobile app support
+- Advanced security policies
+
+### Migration Path
+The current setup provides the foundation:
+- All apps and infrastructure are pre-installed
+- WOPI configuration framework is in place
+- Troubleshooting tools are available
+- Easy transition to production deployment
+
+## Troubleshooting & Diagnostics
+
+### General Troubleshooting
+```bash
+# Check all containers
+docker ps
+
+# View Nextcloud logs
+nextcloud-logs.sh
+
+# Access container shell
+nextcloud-shell.sh
+
+# Check app status
+nextcloud-occ.sh app:list
+```
+
+### Collabora Diagnostics (Development)
 ```bash
 # Try automated fixes in order of increasing impact
 nextcloud-fix-collabora.sh
