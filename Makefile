@@ -5,8 +5,8 @@
 
 # Default target
 help:
-	@echo "🚀 Simplified Flatcar Nextcloud Project Commands"
-	@echo "==============================================="
+	@echo "🚀 Flatcar Nextcloud Project Commands"
+	@echo "===================================="
 	@echo ""
 	@echo "Development Commands:"
 	@echo "  make dev-vm            - Start simplified development VM"
@@ -66,8 +66,8 @@ dev-vm:
 	@echo "🖥️  Starting simplified development VM..."
 	@echo "📝 Generating Ignition config..."
 	@butane --pretty --strict --files-dir=files nextcloud-development.yaml > dev.ign
-	@echo "🚀 Launching VM (Nextcloud: :8080, Adminer: :8081)..."
-	@./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081
+	@echo "🚀 Launching VM (Nextcloud: :8080, Collabora: :9980, Adminer: :8081)..."
+	@./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081 -f 9980:9980
 
 # Quick lint check
 lint:

@@ -1,28 +1,30 @@
 # =========================================================================
-# SIMPLIFIED NEXTCLOUD DEVELOPMENT SETUP FOR FLATCAR CONTAINER LINUX
+# NEXTCLOUD DEVELOPMENT SETUP WITH AUTOMATED APP INSTALLATION
 # =========================================================================
 #
-# This simplified Butane configuration creates a basic Nextcloud development
-# environment optimized for quick setup and testing:
+# This Butane configuration creates a complete Nextcloud development
+# environment with automatic app installation:
 #
 # FEATURES:
 # - Direct Nextcloud access (no reverse proxy)
 # - Simple, memorable passwords (admin/admin123)
 # - PostgreSQL database with Redis cache
+# - Collabora Online for document editing
 # - Adminer for database management
-# - Essential utility scripts only
+# - Automatic installation of essential apps
 #
 # ARCHITECTURE:
-# - Nextcloud (latest) + PostgreSQL 15 + Redis 7
+# - Nextcloud (latest) + PostgreSQL 15 + Redis 7 + Collabora
 # - Direct access via port 8080
-# - Minimal services for faster startup
-# - Optional Collabora add-on available separately
+# - Essential productivity and development apps pre-installed
+# - Collabora integration configured automatically
 #
 # QUICK START:
 # 1. Replace SSH key below with your public key
 # 2. Convert: butane --pretty --strict nextcloud-development.yaml > dev.ign
-# 3. Run: ./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081
+# 3. Run: ./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081 -f 9980:9980
 # 4. Access: http://localhost:8080 (admin/admin123)
+# 5. Collabora: http://localhost:9980
 #
 # =========================================================================
 
@@ -84,6 +86,30 @@ storage:
     contents:
       local: scripts/nextcloud-reset.sh
 
+  # App installation script
+  - path: /opt/bin/nextcloud-install-apps.sh
+    mode: 493 # 0755 in decimal
+    contents:
+      local: scripts/nextcloud-install-apps.sh
+
+  # Collabora configuration script
+  - path: /opt/bin/nextcloud-collabora-setup.sh
+    mode: 493 # 0755 in decimal
+    contents:
+      local: scripts/nextcloud-collabora-setup.sh
+
+  # Collabora debugging script
+  - path: /opt/bin/nextcloud-debug-collabora.sh
+    mode: 493 # 0755 in decimal
+    contents:
+      local: scripts/nextcloud-debug-collabora.sh
+
+  # Collabora quick fix script
+  - path: /opt/bin/nextcloud-fix-collabora.sh
+    mode: 493 # 0755 in decimal
+    contents:
+      local: scripts/nextcloud-fix-collabora.sh
+
   # Systemd services
   - path: /etc/systemd/system/docker-compose-setup.service
     mode: 420 # 0644 in decimal
@@ -100,6 +126,16 @@ storage:
     contents:
       local: services/nextcloud-dev.service
 
+  - path: /etc/systemd/system/nextcloud-install-apps.service
+    mode: 420 # 0644 in decimal
+    contents:
+      local: services/nextcloud-install-apps.service
+
+  - path: /etc/systemd/system/nextcloud-collabora-setup.service
+    mode: 420 # 0644 in decimal
+    contents:
+      local: services/nextcloud-collabora-setup.service
+
 systemd:
   units:
   - name: docker.service
@@ -115,4 +151,10 @@ systemd:
     enabled: true
 
   - name: nextcloud-dev.service
+    enabled: true
+
+  - name: nextcloud-install-apps.service
+    enabled: true
+
+  - name: nextcloud-collabora-setup.service
     enabled: true

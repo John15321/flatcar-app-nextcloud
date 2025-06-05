@@ -1,0 +1,29 @@
+[Unit]
+Description=Install Nextcloud Apps
+After=nextcloud-dev.service
+Requires=nextcloud-dev.service
+ConditionFirstBoot=true
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=core
+Group=core
+WorkingDirectory=/opt/nextcloud
+Environment=PATH=/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+
+# Wait a bit for Nextcloud to fully initialize
+ExecStartPre=/bin/sleep 30
+
+# Install essential Nextcloud apps
+ExecStart=/opt/bin/nextcloud-install-apps.sh
+
+# Set timeout for long-running app installations
+TimeoutStartSec=900
+
+# Log output
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,29 @@
+[Unit]
+Description=Configure Collabora Online Integration
+After=nextcloud-install-apps.service
+Requires=nextcloud-install-apps.service
+ConditionFirstBoot=true
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=core
+Group=core
+WorkingDirectory=/opt/nextcloud
+Environment=PATH=/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+
+# Wait for app installation to complete
+ExecStartPre=/bin/sleep 10
+
+# Configure Collabora integration
+ExecStart=/opt/bin/nextcloud-collabora-setup.sh configure
+
+# Set timeout for configuration
+TimeoutStartSec=300
+
+# Log output
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
