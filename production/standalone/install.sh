@@ -84,10 +84,9 @@ setup_files() {
     local repo_url="https://raw.githubusercontent.com/yourusername/flatcar-app-nextcloud/main/production"
     
     # Download configuration files
-    curl -L "$repo_url/configs/docker-compose.prod.yml" -o "$base_dir/docker-compose.yml"
+    curl -L "$repo_url/configs/docker-compose.yml" -o "$base_dir/docker-compose.yml"
     curl -L "$repo_url/configs/.env.example" -o "$base_dir/.env.example"
-    curl -L "$repo_url/configs/traefik/traefik.yml" -o "$base_dir/traefik/traefik.yml"
-    curl -L "$repo_url/configs/traefik/dynamic.yml" -o "$base_dir/traefik/dynamic.yml"
+    curl -L "$repo_url/configs/traefik.yml" -o "$base_dir/traefik.yml"
     
     # Download scripts
     curl -L "$repo_url/scripts/setup-production.sh" -o /opt/bin/setup-production.sh

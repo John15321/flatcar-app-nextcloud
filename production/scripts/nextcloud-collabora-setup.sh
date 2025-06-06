@@ -23,12 +23,7 @@ configure_collabora() {
     $OCC_CMD app:install richdocuments 2>/dev/null || true
     $OCC_CMD app:enable richdocuments
     
-    # Use internal HTTPS if available, otherwise HTTP
     local internal_url="http://nextcloud-collabora:9980"
-    if docker exec nextcloud-app curl -k -s --connect-timeout 5 "https://nextcloud-collabora:9980/hosting/discovery" >/dev/null 2>&1; then
-        internal_url="https://nextcloud-collabora:9980"
-        log "✅ Using internal HTTPS"
-    fi
     
     $OCC_CMD config:app:set richdocuments wopi_url --value="$internal_url"
     $OCC_CMD config:app:set richdocuments public_wopi_url --value="https://collabora.${DOMAIN}"
@@ -44,13 +39,7 @@ configure_collabora() {
 test_integration() {
     log "🧪 Testing..."
     curl -s --connect-timeout 10 "https://collabora.${DOMAIN}/hosting/discovery" >/dev/null && echo "✅ External HTTPS working" || { echo "❌ External HTTPS failed"; return 1; }
-    
-    local wopi_url=$($OCC_CMD config:app:get richdocuments wopi_url)
-    if [[ "$wopi_url" == https* ]]; then
-        docker exec nextcloud-app curl -k -s "$wopi_url/hosting/discovery" >/dev/null && echo "✅ Internal HTTPS working" || { echo "❌ Internal HTTPS failed"; return 1; }
-    else
-        docker exec nextcloud-app curl -s "$wopi_url/hosting/discovery" >/dev/null && echo "✅ Internal HTTP working" || { echo "❌ Internal HTTP failed"; return 1; }
-    fi
+    docker exec nextcloud-app curl -s "http://nextcloud-collabora:9980/hosting/discovery" >/dev/null && echo "✅ Internal HTTP working" || { echo "❌ Internal HTTP failed"; return 1; }
 }
 
 # Show config
