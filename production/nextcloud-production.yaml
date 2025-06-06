@@ -1,0 +1,93 @@
+# Nextcloud Production - Simplified
+variant: flatcar
+version: 1.1.0
+
+passwd:
+  users:
+  - name: core
+    groups:
+    - docker
+    - sudo
+    ssh_authorized_keys:
+    - "ssh-rsa YOUR_SSH_PUBLIC_KEY_HERE"
+
+storage:
+  directories:
+  - path: /opt/nextcloud
+    mode: 755
+  - path: /opt/bin
+    mode: 755
+
+  files:
+  # Docker Compose
+  - path: /opt/nextcloud/docker-compose.yml
+    mode: 644
+    contents:
+      local: configs/docker-compose.yml
+
+  # Traefik config
+  - path: /opt/nextcloud/traefik.yml
+    mode: 644
+    contents:
+      local: configs/traefik.yml
+
+  # Environment template
+  - path: /opt/nextcloud/.env.example
+    mode: 644
+    contents:
+      local: configs/.env.example
+  # Scripts
+  - path: /opt/bin/setup-production.sh
+    mode: 755
+    contents:
+      local: scripts/setup-production.sh
+
+  - path: /opt/bin/generate-secrets.sh
+    mode: 755
+    contents:
+      local: scripts/generate-secrets.sh
+
+  - path: /opt/bin/deploy-production.sh
+    mode: 755
+    contents:
+      local: scripts/deploy-production.sh
+
+  - path: /opt/bin/nextcloud-occ.sh
+    mode: 755
+    contents:
+      local: scripts/nextcloud-occ.sh
+
+  - path: /opt/bin/backup-nextcloud.sh
+    mode: 755
+    contents:
+      local: scripts/backup-nextcloud.sh
+
+  - path: /opt/bin/update-system.sh
+    mode: 755
+    contents:
+      local: scripts/update-system.sh
+
+  - path: /opt/bin/nextcloud-logs-prod.sh
+    mode: 755
+    contents:
+      local: scripts/nextcloud-logs-prod.sh
+
+systemd:
+  units:
+  - name: nextcloud.service
+    enabled: true
+    contents: |
+      [Unit]
+      Description=Nextcloud Production
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      WorkingDirectory=/opt/nextcloud
+      ExecStart=/opt/bin/deploy-production.sh
+      TimeoutStartSec=300
+
+      [Install]
+      WantedBy=multi-user.target

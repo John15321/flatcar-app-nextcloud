@@ -1,0 +1,29 @@
+[Unit]
+Description=Nextcloud Development Docker Compose Stack
+After=setup-nextcloud-dev.service docker-compose-setup.service
+Requires=docker.service setup-nextcloud-dev.service docker-compose-setup.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/nextcloud
+User=core
+Group=core
+# Make sure /opt/bin is first in PATH for docker-compose
+Environment=PATH=/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+
+# Always pull latest images in development
+# Using explicit path to docker-compose since we can't symlink to /usr/local/bin
+ExecStartPre=/opt/bin/docker-compose pull
+ExecStartPre=-/opt/bin/docker-compose down
+ExecStart=/opt/bin/docker-compose up -d
+ExecReload=/opt/bin/docker-compose restart
+ExecStop=/opt/bin/docker-compose down
+
+# Auto-restart on failure
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

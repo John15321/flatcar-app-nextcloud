@@ -1,0 +1,145 @@
+# =========================================================================
+# NEXTCLOUD DEVELOPMENT SETUP WITH ESSENTIAL APPS
+# =========================================================================
+#
+# This Docker Compose file provides a complete Nextcloud development
+# environment with essential components:
+# - Nextcloud application (direct access, no reverse proxy)
+# - PostgreSQL database
+# - Redis cache
+# - Collabora Online (office document editing)
+# - Adminer for database management (development only)
+#
+# Access Nextcloud at: http://localhost:8080
+# Access Collabora at: http://localhost:9980
+# Access Adminer at: http://localhost:8081
+#
+# =========================================================================
+
+services:
+  # -----------------------------------------------------------------------
+  # NEXTCLOUD APPLICATION
+  # -----------------------------------------------------------------------
+  nextcloud:
+    image: nextcloud:latest
+    container_name: nextcloud-app
+    restart: unless-stopped
+    ports:
+      - "8080:80"                  # Main Nextcloud access
+    volumes:
+      - nextcloud_data:/var/www/html
+      - ./config:/var/www/html/config
+      - ./data:/var/www/html/data
+      - ./apps:/var/www/html/custom_apps
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
+      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+      - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
+      - REDIS_HOST=redis
+      - REDIS_HOST_PORT=6379
+    depends_on:
+      - db
+      - redis
+    networks:
+      - nextcloud-network
+
+  # -----------------------------------------------------------------------
+  # POSTGRESQL DATABASE
+  # -----------------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: nextcloud-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"                # Exposed for development
+    volumes:
+      - ./db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    networks:
+      - nextcloud-network
+
+  # -----------------------------------------------------------------------
+  # REDIS CACHE
+  # -----------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: nextcloud-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"                # Exposed for development
+    volumes:
+      - ./redis:/data
+    command: redis-server --save 60 1 --loglevel warning
+    networks:
+      - nextcloud-network
+
+  # -----------------------------------------------------------------------
+  # ADMINER DATABASE MANAGEMENT (DEVELOPMENT ONLY)
+  # -----------------------------------------------------------------------
+  adminer:
+    image: adminer
+    container_name: nextcloud-adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"                # Access at http://localhost:8081
+    environment:
+      - ADMINER_DEFAULT_SERVER=db
+    depends_on:
+      - db
+    networks:
+      - nextcloud-network
+
+  # -----------------------------------------------------------------------
+  # COLLABORA ONLINE (OFFICE DOCUMENTS)
+  # -----------------------------------------------------------------------
+  collabora:
+    image: collabora/code:latest
+    container_name: nextcloud-collabora
+    restart: unless-stopped
+    ports:
+      - "9980:9980"                # Collabora Online access
+    cap_add:
+      - MKNOD
+      - SYS_ADMIN
+      - SYS_CHROOT
+    security_opt:
+      - apparmor:unconfined
+    environment:
+      # Basic authentication for Collabora admin interface
+      - username=admin
+      - password=admin123
+      
+      # Dictionary support
+      - dictionaries=en_US,en_GB,de_DE,es_ES,fr_FR
+      
+      # SSL and security settings for development
+      - DONT_GEN_SSL_CERT=1
+      - extra_params=--o:ssl.enable=false --o:ssl.termination=true --o:logging.level=trace --o:welcome.enable=false --o:net.frame_ancestors=localhost:8080,127.0.0.1:8080 --o:storage.wopi.host[0]=nextcloud-app --o:storage.wopi.host[1]=localhost --o:storage.wopi.host[2]=127.0.0.1
+      
+      # WOPI host configuration - comprehensive allowlist
+      - aliasgroup1=http://nextcloud-app:80,http://localhost:8080,http://127.0.0.1:8080
+      
+      # Domain allowlist - specify all allowed domains and ports
+      - domain=nextcloud-app\\|localhost:8080\\|127\\.0\\.0\\.1:8080\\|localhost\\|127\\.0\\.0\\.1
+      
+      # Server name should include port for proper URL generation
+      - server_name=localhost:9980
+    depends_on:
+      - nextcloud
+    networks:
+      - nextcloud-network
+
+volumes:
+  nextcloud_data:
+
+networks:
+  nextcloud-network:
+    driver: bridge

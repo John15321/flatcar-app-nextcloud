@@ -1,0 +1,19 @@
+# QEMU disk images
+*.img
+*.img.fresh
+
+# Local validation artifacts
+.validation-output/
+ignition-artifacts/
+*.ign
+
+# Editor files
+.vscode/
+.idea/
+*~
+*.swp
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db

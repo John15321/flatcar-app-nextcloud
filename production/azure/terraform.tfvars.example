@@ -1,0 +1,43 @@
+# =========================================================================
+# TERRAFORM/OPENTOFU VARIABLES EXAMPLE FOR NEXTCLOUD PRODUCTION ON AZURE
+# =========================================================================
+#
+# Copy this file to terraform.tfvars and customize the values below
+# (Works with both Terraform and OpenTofu)
+#
+# =========================================================================
+
+# -----------------------------------------------------------------------
+# REQUIRED VARIABLES
+# -----------------------------------------------------------------------
+
+# Your SSH public key for VM access
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQ... your-email@domain.com"
+
+# Email for Let's Encrypt certificates
+acme_email = "admin@yourdomain.com"
+
+# -----------------------------------------------------------------------
+# OPTIONAL VARIABLES
+# -----------------------------------------------------------------------
+
+# Azure configuration
+resource_group_name = "nextcloud-production"
+location           = "East US"
+prefix             = "nextcloud-prod"
+
+# VM configuration
+vm_size         = "Standard_D2s_v3"
+data_disk_size  = 100
+data_disk_type  = "Premium_LRS"
+
+# Domain configuration (optional)
+domain = "nextcloud.yourdomain.com"
+create_dns_zone = false  # Set to true if you want Azure to manage DNS
+
+# Security
+ssh_source_ip = ""  # Leave empty for any IP, or specify your IP for security
+
+# Features
+enable_traefik_dashboard = true
+enable_backup_storage    = true

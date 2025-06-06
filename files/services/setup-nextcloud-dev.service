@@ -1,0 +1,15 @@
+[Unit]
+Description=Setup Nextcloud Development Environment
+After=docker.service
+Before=nextcloud-dev.service
+ConditionFirstBoot=true
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/mkdir -p /opt/nextcloud/data /opt/nextcloud/config /opt/nextcloud/apps
+ExecStart=/bin/mkdir -p /opt/nextcloud/db /opt/nextcloud/redis
+ExecStart=/bin/chown -R core:core /opt/nextcloud
+
+[Install]
+WantedBy=multi-user.target

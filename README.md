@@ -1,267 +1,336 @@
-# Nextcloud on Flatcar Container Linux
+# Nextcloud Development Setup with Essential Apps
 
-This repository contains Butane configurations to deploy Nextcloud and MariaDB on Flatcar Container Linux. The configuration sets up:
+This is a complete Nextcloud development environment for Flatcar Container Linux, designed for productivity and development with essential apps pre-installed.
 
-1. A data storage location for Nextcloud data
-2. Secure environment configuration for credentials
-3. Systemd units for running MariaDB and Nextcloud containers
+## Features
 
-## Configuration Options
+- **Direct Nextcloud access** - No reverse proxy complexity
+- **Simple authentication** - admin/admin123 for easy testing
+- **Essential services** - Nextcloud, PostgreSQL, Redis, Adminer
+- **Automatic app installation** - Essential productivity and development apps
+- **Collabora Online included** - Document editing infrastructure (requires production setup)
+- **Development utilities** - Comprehensive scripts for management
 
-This repository provides three different Butane configuration files to accommodate different deployment scenarios:
+## Quick Start
 
-### 1. Simple Configuration (`nextcloud-simple.yaml`)
-
-The simplest setup that uses directories on the root filesystem. Best for:
-- Testing environments
-- Systems with limited disk options
-- Quick deployments where data persistence isn't critical
-
-**Features:**
-- Uses a directory on the root filesystem for data
-- No additional disk partitioning required
-- Easiest to set up and use
-
-### 2. Dedicated Partition (`nextcloud-dedicated.yaml`)
-
-Uses a dedicated labeled partition for data storage. Best for:
-- Production environments
-- Systems with multiple disks
-- Deployments where data persistence is important
-
-**Features:**
-- Stores all data on a separate partition labeled `NC_DATA`
-- Better isolation between OS and data
-- Easier backup and recovery options
-
-### 3. Cloud-Optimized (`nextcloud-cloud.yaml`)
-
-Automatically detects and configures additional disks in cloud environments. Best for:
-- Deployments in AWS, GCP, Azure, or other cloud providers
-- Systems where disk configuration happens after boot
-
-**Features:** 
-- Auto-detects additional attached disks
-- Automatically formats and mounts disks as needed
-- Falls back to root filesystem if no additional disk is found
-- Works well with cloud-provider volume attachments
-
-## Architecture Overview
-
-```mermaid
-graph TD
-    subgraph "Flatcar Container Linux Host"
-        docker["Docker Service"]
-        ncdata["Data Storage\n/var/lib/nextcloud_data"]
-        envfile["/etc/nextcloud.env\nCredentials File"]
-        
-        subgraph "Docker Containers"
-            maria["MariaDB Container\nmariadb:10.7"]
-            nextcloud["Nextcloud Container\nnextcloud:latest"]
-        end
-        
-        subgraph "Persistent Storage"
-            db["/var/lib/nextcloud_data/db"]
-            config["/var/lib/nextcloud_data/config"]
-            data["/var/lib/nextcloud_data/data"]
-        end
-        
-        systemd["Systemd Services"]
-    end
-    
-    user["User Browser"]
-    
-    systemd -->|manages| docker
-    systemd -->|manages| ncdata
-    systemd -->|starts| maria
-    systemd -->|starts after MariaDB| nextcloud
-    
-    docker -->|runs| maria
-    docker -->|runs| nextcloud
-    
-    maria -->|stores data in| db
-    nextcloud -->|reads/writes| config
-    nextcloud -->|reads/writes| data
-    nextcloud -->|connects to| maria
-    
-    envfile -->|provides credentials to| maria
-    envfile -->|provides credentials to| nextcloud
-    
-    user -->|HTTP/HTTPS| nextcloud
-    
-    classDef container fill:#b3e0ff,stroke:#0066cc,stroke-width:2px;
-    classDef storage fill:#ffcc99,stroke:#ff8000,stroke-width:2px;
-    classDef config fill:#d9f2d9,stroke:#5cd65c,stroke-width:2px;
-    classDef system fill:#f2d9e6,stroke:#d147a3,stroke-width:2px;
-    classDef external fill:#ffffff,stroke:#666666,stroke-width:2px,stroke-dasharray: 5 5;
-    
-    class maria,nextcloud container;
-    class db,config,data storage;
-    class envfile config;
-    class docker,systemd,ncdata system;
-    class user external;
-```
-
-## Usage Instructions
-
-### 1. Choose your Configuration
-
-Select the appropriate configuration file based on your needs:
-
-- `nextcloud-simple.yaml`: Simplest setup using the root filesystem
-- `nextcloud-dedicated.yaml`: Using a dedicated partition
-- `nextcloud-cloud.yaml`: Auto-detecting disks in cloud environments
-
-### 2. Prepare Storage (for dedicated partition only)
-
-If using the dedicated partition configuration, ensure you have a partition labeled as `NC_DATA`:
-
-```
-sudo mkfs.ext4 -L NC_DATA /dev/sdX
-```
-
-where `/dev/sdX` is the device name of your additional volume.
-
-### 3. Convert Butane to Ignition
-
-Ignition is the configuration system used by Flatcar Container Linux. Convert your chosen Butane YAML to Ignition JSON:
-
-1. Install the Butane tool:
+1. **Replace SSH key** in `nextcloud-development.yaml` with your public key
+2. **Generate Ignition config:**
+   ```bash
+   make ignition-dev
+   # or manually: butane --pretty --strict nextcloud-development.yaml > dev.ign
    ```
-   wget https://github.com/coreos/butane/releases/download/v0.17.0/butane-x86_64-unknown-linux-gnu
-   mv butane-x86_64-unknown-linux-gnu butane
-   chmod +x butane
+3. **Launch VM:**
+   ```bash
+   make run-dev
+   # or manually: ./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081 -f 9980:9980
    ```
+4. **Access services:**
+   - Nextcloud: http://localhost:8080 (admin/admin123)
+   - Adminer: http://localhost:8081
+   - Collabora: http://localhost:9980 (infrastructure ready)
 
-2. Convert the configuration (replace with your chosen config file):
-   ```
-   ./butane --pretty --strict nextcloud-simple.yaml > nextcloud.ign
-   ```
+## Services
 
-### 4. Boot Flatcar with Ignition Config
+| Service | Port | Purpose | Status |
+|---------|------|---------|--------|
+| Nextcloud | 8080 | Main application | ✅ Ready |
+| Adminer | 8081 | Database management | ✅ Ready |
+| Collabora | 9980 | Document editing | ⚠️ Needs production config |
+| PostgreSQL | 5432 | Database (exposed for dev tools) | ✅ Ready |
+| Redis | 6379 | Cache (exposed for dev tools) | ✅ Ready |
 
-#### For Local/Physical Hardware
+## Pre-installed Apps
 
-If deploying to physical hardware or a local VM:
+The setup automatically installs these essential apps:
 
-1. Download the Flatcar ISO
-2. Boot with the ISO and pass the Ignition config:
-   ```
-   flatcar.first_boot=1 flatcar.oem.id=qemu ignition.config.url=http://example.com/nextcloud.ign
-   ```
+**Office & Productivity:**
+- Collabora Online (richdocuments app - infrastructure ready)
+- Deck (Kanban Board)
+- Notes, Calendar, Contacts, Mail, Tasks
 
-#### For Cloud Providers
+**Development & Admin:**
+- External Storage Support
+- LDAP Integration
+- Two-Factor Authentication (TOTP)
+- Admin Audit Logging
+- File Access Control
+- Brute Force Protection
+- Suspicious Login Detection
 
-For cloud environments (AWS, GCP, Azure, etc.), consult the provider-specific documentation for passing Ignition configs. For example:
+**File Management:**
+- Download Activity Tracking
+- File Retention
+- Group Folders
 
-- **AWS**: Use user-data to pass the Ignition JSON
-- **GCP**: Use custom metadata to provide the Ignition config
+## Available Scripts
 
-### 5. Access Nextcloud
+| Script | Purpose |
+|--------|---------|
+| `nextcloud-logs.sh` | View container logs |
+| `nextcloud-shell.sh` | Access Nextcloud container shell |
+| `nextcloud-occ.sh` | Run Nextcloud CLI commands |
+| `nextcloud-reset.sh` | Reset the entire environment |
+| `nextcloud-install-apps.sh` | Install additional apps manually |
+| `nextcloud-collabora-setup.sh` | Configure/troubleshoot Collabora |
 
-Once your system is up and running:
+## Collabora Online Status
 
-1. Access Nextcloud via http://YOUR_SERVER_IP
-2. Log in with the admin credentials set in `/etc/nextcloud.env`:
-   - Username: `admin`
-   - Password: `changeme_nextcloud_admin_password` (you should have changed this in the config)
+**Current State:** Infrastructure Ready - Requires Production Configuration
 
-### 5. Further Configuration
+The setup includes:
+- ✅ Collabora Online container configured
+- ✅ richdocuments app installed and enabled
+- ✅ Basic WOPI configuration applied
+- ⚠️ Local HTTP setup has known limitations
 
-#### Add SSL/TLS
+**For Development Use:**
+- All office document apps functionality is available except live editing
+- Documents can be uploaded, downloaded, and managed
+- Collabora infrastructure is ready for production deployment
 
-For production use, add SSL/TLS using either:
+**Known Limitation:**
+Local HTTP Collabora setups have inherent security and connectivity challenges. For reliable document editing, a production configuration with proper SSL/TLS and domain setup is recommended.
 
-1. **Caddy or Traefik**: Deploy an additional container with automatic Let's Encrypt certificate management
-2. **Manual configuration**: Set up a reverse proxy with SSL termination
-
-Example Caddy container service that you could add to your Butane configuration:
-
-```yaml
-- name: caddy-container.service
-  enabled: true
-  contents: |
-    [Unit]
-    Description=Caddy Reverse Proxy with Automatic HTTPS
-    After=nextcloud-container.service
-    Requires=nextcloud-container.service
-    
-    [Service]
-    TimeoutStartSec=0
-    Restart=always
-    ExecStartPre=-/usr/bin/docker stop %n
-    ExecStartPre=-/usr/bin/docker rm %n
-    ExecStartPre=/usr/bin/docker pull caddy:2
-    ExecStart=/usr/bin/docker run --rm --name %n \
-      --volume /var/lib/nextcloud_data/caddy_data:/data \
-      --volume /var/lib/nextcloud_data/caddy_config:/config \
-      --volume /var/lib/nextcloud_data/Caddyfile:/etc/caddy/Caddyfile:ro \
-      --publish 80:80 \
-      --publish 443:443 \
-      caddy:2
-    
-    [Install]
-    WantedBy=multi-user.target
-```
-
-Create a Caddyfile at `/var/lib/nextcloud_data/Caddyfile`:
-
-```
-your.domain.com {
-  reverse_proxy localhost:80
-}
-```
-
-#### Change Database Configuration
-
-To use a different database or update the configuration:
-
-1. Edit `/etc/nextcloud.env` with new database settings
-2. Restart the containers:
-   ```
-   sudo systemctl restart mariadb-container.service nextcloud-container.service
-   ```
-
-#### External Database
-
-To use an external database instead of the container:
-
-1. Modify `/etc/nextcloud.env` to point to the external database
-2. Disable the MariaDB container:
-   ```
-   sudo systemctl disable --now mariadb-container.service
-   ```
-3. Edit `nextcloud-container.service` to remove the dependency on `mariadb-container.service`
-
-## Security Considerations
-
-1. **Change all default passwords** in `/etc/nextcloud.env`
-2. Implement SSL/TLS for secure connections
-3. Consider network isolation for the database container
-4. Regularly back up the `/var/lib/nextcloud_data` directory
-
-## Maintenance
-
-### Updates
-
-To update the containers:
-
-```
-sudo systemctl restart mariadb-container.service nextcloud-container.service
-```
-
-The restart process will pull the latest images if available.
-
-### Backups
-
-Regularly back up the `/var/lib/nextcloud_data` directory to ensure data persistence.
-
-Example backup script:
-
+**Troubleshooting Tools Available:**
 ```bash
-#!/bin/bash
-BACKUP_DATE=$(date +%Y%m%d)
-BACKUP_DIR=/backups
-mkdir -p $BACKUP_DIR
-tar -czf $BACKUP_DIR/nextcloud_backup_$BACKUP_DATE.tar.gz /var/lib/nextcloud_data
+ssh -p 2222 core@localhost
+
+# Run comprehensive diagnostics
+/opt/bin/nextcloud-debug-collabora.sh
+
+# Try automated fixes
+/opt/bin/nextcloud-fix-collabora.sh
+
+# Manual configuration
+/opt/bin/nextcloud-collabora-setup.sh configure
+
+# Check current status
+/opt/bin/nextcloud-collabora-setup.sh status
 ```
+
+**Verification Commands:**
+```bash
+# Check containers are running
+docker ps | grep -E "(nextcloud|collabora)"
+
+# Test Collabora discovery endpoint
+curl http://localhost:9980/hosting/discovery
+
+# Check richdocuments app status
+/opt/bin/nextcloud-occ.sh app:list | grep richdocuments
+```
+
+## App Management
+
+**View installed apps:**
+```bash
+ssh -p 2222 core@localhost
+/opt/bin/nextcloud-occ.sh app:list
+```
+
+**Install additional apps:**
+```bash
+/opt/bin/nextcloud-occ.sh app:install app_name
+/opt/bin/nextcloud-occ.sh app:enable app_name
+```
+
+**Or use the automated script:**
+```bash
+/opt/bin/nextcloud-install-apps.sh
+```
+
+## What's New in This Setup
+
+**Added:**
+- Automatic installation of essential Nextcloud apps
+- Integrated Collabora Online for document editing
+- Comprehensive productivity app suite
+- Enhanced security apps (2FA, brute force protection)
+- Development-friendly apps (external storage, LDAP)
+
+**Simplified from Original:**
+- Removed Nginx reverse proxy (complexity)
+- Removed SSL certificate generation (unnecessary for dev)
+- Removed health monitoring (overkill for development)
+
+**Architecture:**
+- Direct Nextcloud access on port 8080
+- Collabora integrated on port 9980
+- Essential apps installed automatically
+- Simple admin/admin123 authentication
+
+## File Structure
+
+```
+files/
+├── configs/
+│   ├── docker-compose.yml          # Main services (includes Collabora)
+│   ├── docker-compose.collabora.yml # Standalone Collabora (legacy)
+│   └── .env                        # Environment variables
+├── scripts/                        # Development and management scripts
+│   ├── nextcloud-install-apps.sh   # App installation automation
+│   └── ...                         # Other utility scripts
+└── services/                       # Systemd services
+    ├── nextcloud-install-apps.service # App installation service
+    └── ...                         # Other system services
+```
+
+## Development Workflow
+
+1. **Start developing:** VM boots automatically with Nextcloud and all apps ready
+2. **Document management:** Upload, organize, and download office documents
+3. **View logs:** `nextcloud-logs.sh`
+4. **Execute commands:** `nextcloud-occ.sh`
+5. **Access shell:** `nextcloud-shell.sh`
+6. **Database access:** Visit http://localhost:8081 (Adminer)
+7. **Install more apps:** `nextcloud-install-apps.sh` or via web interface
+8. **Reset environment:** `nextcloud-reset.sh` (if needed)
+
+**Note:** Collabora Online document editing requires production configuration for reliable operation.
+
+## 🚀 Production Deployment Available
+
+This repository includes a **complete production-ready configuration** for full Nextcloud deployment with Collabora Online.
+
+### Production Features ✅
+- **Full document editing** - Word, Excel, PowerPoint with real-time collaboration
+- **Enterprise security** - SSL/TLS, security headers, firewall protection
+- **Multiple deployment options** - Azure cloud or standalone servers
+- **Automated SSL certificates** - Let's Encrypt integration
+- **Professional infrastructure** - Traefik reverse proxy, Redis, PostgreSQL
+- **Backup & monitoring** - Automated backups and comprehensive logging
+
+### Getting Started with Production
+```bash
+# Option 1: Azure deployment (recommended)
+cd production/azure && terraform apply
+
+# Option 2: Standalone server
+make ignition-prod
+# Deploy to your server and run setup
+
+# Option 3: Full manual control
+cd production && butane nextcloud-production.yaml > prod.ign
+```
+
+📖 **Complete documentation:** See `production/README.md` for detailed deployment guides.
+
+### Migration from Development
+The production setup builds on this development environment:
+- ✅ All apps and infrastructure are compatible
+- ✅ Easy data migration path available  
+- ✅ Same app ecosystem and functionality
+- ✅ Comprehensive migration documentation
+
+## Troubleshooting & Diagnostics
+
+### General Troubleshooting
+```bash
+# Check all containers
+docker ps
+
+# View Nextcloud logs
+nextcloud-logs.sh
+
+# Access container shell
+nextcloud-shell.sh
+
+# Check app status
+nextcloud-occ.sh app:list
+```
+
+### Collabora Diagnostics (Development)
+```bash
+# Try automated fixes in order of increasing impact
+nextcloud-fix-collabora.sh
+
+# Or use specific fixes:
+nextcloud-fix-collabora.sh restart    # Just restart Collabora
+nextcloud-fix-collabora.sh recreate   # Recreate containers
+nextcloud-fix-collabora.sh stable     # Use stable version
+```
+
+### Manual Diagnostics
+```bash
+# Run comprehensive Collabora debugging
+nextcloud-debug-collabora.sh
+
+# Check specific Collabora configuration
+nextcloud-collabora-setup.sh status
+
+# View Collabora logs
+docker logs nextcloud-collabora
+
+# Test connectivity manually
+curl http://localhost:9980/hosting/discovery
+```
+
+### Common Issues and Solutions
+
+1. **Collabora container not starting:**
+   ```bash
+   docker restart nextcloud-collabora
+   # Or restart all containers:
+   cd /opt/nextcloud && docker-compose restart
+   ```
+
+2. **WOPI connection errors:**
+   ```bash
+   nextcloud-collabora-setup.sh configure
+   ```
+
+3. **Documents won't open/edit:**
+   - Check if richdocuments app is enabled in Nextcloud admin panel
+   - Verify Collabora settings in Nextcloud Admin → Office
+   - Run: `nextcloud-debug-collabora.sh` for detailed analysis
+
+4. **Complete reset (if all else fails):**
+   ```bash
+   cd /opt/nextcloud
+   docker-compose down -v
+   docker-compose up -d
+   # Wait for startup, then run:
+   nextcloud-install-apps.sh
+   ```
+
+### Collabora URLs
+- **Collabora Admin Panel:** http://localhost:9980 (admin/admin123)
+- **Discovery Endpoint:** http://localhost:9980/hosting/discovery
+- **Integration Settings:** Nextcloud Admin → Office
+
+## 🚀 Production Deployment
+
+This development setup provides the foundation for production deployment. A complete **production-ready configuration** is available in the `/production` directory with:
+
+- **🔒 Security hardened** - Traefik reverse proxy, SSL/TLS, strong passwords
+- **☁️ Azure deployment** - Terraform/OpenTofu automation for cloud deployment  
+- **🖥️ Standalone server** - Installation scripts for any Linux server
+- **📋 Domain flexibility** - Works with custom domains or public IP
+- **🔧 Full automation** - Scripts for setup, backups, and maintenance
+
+### Quick Production Start
+
+**Option 1: Azure Deployment (Recommended)**
+```bash
+cd production/azure
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your settings
+
+# Using Terraform:
+terraform init && terraform plan && terraform apply
+
+# Or using OpenTofu:
+tofu init && tofu plan && tofu apply
+```
+
+**Option 2: Standalone Server**
+```bash
+make ignition-prod  # Generate production configuration
+# Deploy to your server and run setup scripts
+```
+
+**📖 Complete Documentation:** See `/production/README.md` for detailed deployment instructions, security features, and migration guides.
+
+---
+
+This setup provides a complete, production-like Nextcloud environment with essential apps pre-configured for immediate productivity and development work.
