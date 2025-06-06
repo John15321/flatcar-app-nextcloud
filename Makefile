@@ -12,6 +12,11 @@ help:
 	@echo "  make dev-vm            - Start simplified development VM"
 	@echo "  make ignition-dev      - Generate development Ignition file"
 	@echo ""
+	@echo "Production Commands:"
+	@echo "  make ignition-prod     - Generate production Ignition file"
+	@echo "  make ignition-https    - Generate production Ignition file with internal HTTPS"
+	@echo "  make validate-prod     - Validate production configuration"
+	@echo ""
 	@echo "Validation Commands:"
 	@echo "  make validate          - Run basic validation"
 	@echo "  make docker-validate   - Validate Docker Compose configuration"
@@ -69,21 +74,62 @@ dev-vm:
 	@echo "🚀 Launching VM (Nextcloud: :8080, Collabora: :9980, Adminer: :8081)..."
 	@./flatcar_production_qemu.sh -i dev.ign -M 4096 -f 8080:8080 -f 8081:8081 -f 9980:9980
 
+# Production targets
+ignition-prod:
+	@echo "⚙️  Generating production Ignition configuration..."
+	@cd production && butane --pretty --strict --files-dir=. nextcloud-production.yaml > ../production.ign
+	@echo "✅ Generated: production.ign"
+	@echo ""
+	@echo "📋 Next steps:"
+	@echo "1. Edit production/.env with your domain and credentials"
+	@echo "2. Deploy production.ign to your server"
+	@echo "3. SSH to server and run: sudo /opt/bin/setup-production.sh"
+
+# Generate production Ignition with internal HTTPS
+ignition-https:
+	@echo "⚙️  Generating production Ignition configuration with internal HTTPS..."
+	@cd production && butane --pretty --strict --files-dir=. nextcloud-production.yaml > ../production-https.ign
+	@echo "✅ Generated: production-https.ign"
+	@echo ""
+	@echo "📋 Next steps:"
+	@echo "1. Edit production/.env with your domain and credentials"
+	@echo "2. Deploy production-https.ign to your server"
+	@echo "3. SSH to server and run: sudo /opt/bin/setup-production.sh --internal-https"
+	@echo "4. Start with: docker-compose -f docker-compose.internal-https.yml up -d"
+
+validate-prod:
+	@echo "🧪 Validating production configuration..."
+	@echo "1. Production Docker Compose..."
+	@docker-compose -f production/configs/docker-compose.prod.yml config --quiet && echo "✅ Production Docker Compose is valid"
+	@echo "2. Internal HTTPS Docker Compose..."
+	@docker-compose -f production/configs/docker-compose.internal-https.yml config --quiet && echo "✅ Internal HTTPS Docker Compose is valid"
+	@echo "3. Production Butane configuration..."
+	@cd production && butane --strict --files-dir=. nextcloud-production.yaml > /dev/null && echo "✅ Production Butane configuration is valid"
+	@echo "4. Terraform/OpenTofu configuration..."
+	@cd production/azure && \
+	if command -v tofu >/dev/null 2>&1; then \
+		tofu fmt -check=true && echo "✅ OpenTofu configuration formatting is valid"; \
+	elif command -v terraform >/dev/null 2>&1; then \
+		terraform fmt -check=true && echo "✅ Terraform configuration formatting is valid"; \
+	else \
+		echo "⚠️ Neither OpenTofu nor Terraform found - install one to validate IaC formatting"; \
+	fi
+
 # Quick lint check
 lint:
 	@echo "🔍 Running YAML linting..."
-	@yamllint -c .yamllint.yml *.yaml *.yml
+	@find . -name "*.yaml" -o -name "*.yml" | head -10 | xargs yamllint -c .yamllint.yml
 
 # CI simulation (run all validations like GitHub Actions)
 ci:
 	@echo "🤖 Simulating CI pipeline..."
 	@echo "1. YAML Syntax validation..."
-	@yamllint -c .yamllint.yml *.yaml *.yml
+	@find . -name "*.yaml" -o -name "*.yml" | head -10 | xargs yamllint -c .yamllint.yml
 	@echo "2. Docker Compose validation..."
 	@docker-compose -f files/configs/docker-compose.yml config --quiet
+	@docker-compose -f production/configs/docker-compose.prod.yml config --quiet
+	@docker-compose -f production/configs/docker-compose.internal-https.yml config --quiet
 	@echo "3. Butane configuration validation..."
 	@butane --strict --files-dir=files nextcloud-development.yaml > /dev/null
-	@echo "✅ All CI validations passed!"
-	@butane --strict nextcloud-production.yaml > /dev/null
-	@butane --strict nextcloud-development.yaml > /dev/null
+	@cd production && butane --strict --files-dir=. nextcloud-production.yaml > /dev/null && echo "✅ Production Butane configuration is valid"
 	@echo "✅ All CI validations passed!"

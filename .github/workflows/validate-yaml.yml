@@ -53,6 +53,15 @@ jobs:
           cd files/configs
           docker-compose config --quiet
           echo "✅ Docker Compose file is valid"
+          
+          echo "Validating production docker-compose.prod.yml..."
+          cd ../../production/configs
+          docker-compose -f docker-compose.prod.yml config --quiet
+          echo "✅ Production Docker Compose file is valid"
+          
+          echo "Validating internal HTTPS docker-compose.internal-https.yml..."
+          docker-compose -f docker-compose.internal-https.yml config --quiet
+          echo "✅ Internal HTTPS Docker Compose file is valid"
 
   validate-flatcar-configs:
     name: "Validate Flatcar Configuration"
@@ -82,6 +91,12 @@ jobs:
           butane --pretty --strict nextcloud-development.yaml > /dev/null
           echo "✅ Development configuration is valid"
           
+      - name: "Validate Production Configuration"
+        run: |
+          echo "Validating production/nextcloud-production.yaml..."
+          cd production && butane --pretty --strict --files-dir=. nextcloud-production.yaml > /dev/null
+          echo "✅ Production configuration is valid"
+          
       - name: "Generate Ignition File (Artifact)"
         run: |
           echo "Generating Ignition file for validation..."
@@ -98,3 +113,50 @@ jobs:
           name: ignition-config
           path: ignition-artifacts/
           retention-days: 30
+
+  validate-iac:
+    name: "Validate Infrastructure as Code"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        tool: [terraform, opentofu]
+    
+    steps:
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+        
+      - name: "Setup Terraform"
+        if: matrix.tool == 'terraform'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+          
+      - name: "Setup OpenTofu"
+        if: matrix.tool == 'opentofu'
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: latest
+          
+      - name: "Format Check"
+        run: |
+          cd production/azure
+          if [ "${{ matrix.tool }}" = "terraform" ]; then
+            terraform fmt -check=true
+            echo "✅ Terraform formatting is correct"
+          else
+            tofu fmt -check=true
+            echo "✅ OpenTofu formatting is correct"
+          fi
+          
+      - name: "Validate Configuration"
+        run: |
+          cd production/azure
+          if [ "${{ matrix.tool }}" = "terraform" ]; then
+            terraform init -backend=false
+            terraform validate
+            echo "✅ Terraform configuration is valid"
+          else
+            tofu init -backend=false
+            tofu validate
+            echo "✅ OpenTofu configuration is valid"
+          fi

@@ -1,0 +1,291 @@
+# =========================================================================
+# NEXTCLOUD PRODUCTION SETUP - SECURITY HARDENED
+# =========================================================================
+#
+# This Butane configuration creates a production-ready Nextcloud
+# environment with comprehensive security and SSL/TLS support:
+#
+# FEATURES:
+# - Traefik reverse proxy with automatic SSL (Let's Encrypt)
+# - Strong, generated passwords
+# - Security-hardened configuration
+# - Network isolation and firewall rules
+# - Automatic backups and monitoring
+# - Production-grade logging
+#
+# DEPLOYMENT OPTIONS:
+# - Standalone server (public IP)
+# - Azure VM (with Terraform)
+# - With or without custom domain
+#
+# SECURITY:
+# - All passwords randomly generated
+# - HTTPS only with HSTS
+# - Security headers (CSP, X-Frame-Options, etc.)
+# - Fail2ban for brute force protection
+# - Network segmentation
+# - Regular security updates
+#
+# QUICK START:
+# 1. Configure production variables in .env
+# 2. Replace SSH key below with your public key
+# 3. Convert: butane --pretty --strict nextcloud-production.yaml > prod.ign
+# 4. Deploy to server or Azure VM
+#
+# =========================================================================
+
+variant: flatcar
+version: 1.1.0
+
+passwd:
+  users:
+  - name: core
+    groups:
+    - docker
+    - sudo
+    ssh_authorized_keys:
+    - "ssh-rsa YOUR_SSH_PUBLIC_KEY_HERE"
+    # IMPORTANT: Replace with your actual SSH public key
+
+storage:
+  directories:
+  - path: /opt/nextcloud
+    mode: 755 # 755
+  - path: /opt/bin
+    mode: 755 # 755
+  - path: /opt/traefik
+    mode: 755 # 755
+  - path: /opt/backups
+    mode: 755 # 755
+  - path: /var/log/nextcloud
+    mode: 755 # 755
+
+  files:
+  # Production Docker Compose with Traefik and security
+  - path: /opt/nextcloud/docker-compose.yml
+    mode: 644
+    contents:
+      local: configs/docker-compose.prod.yml
+
+  # Internal HTTPS Docker Compose (alternative)
+  - path: /opt/nextcloud/docker-compose.internal-https.yml
+    mode: 644
+    contents:
+      local: configs/docker-compose.internal-https.yml
+
+  # Traefik configuration
+  - path: /opt/traefik/traefik.yml
+    mode: 644
+    contents:
+      local: configs/traefik/traefik.yml
+
+  - path: /opt/traefik/dynamic.yml
+    mode: 644
+    contents:
+      local: configs/traefik/dynamic.yml
+
+  # Internal HTTPS Traefik configuration (alternative)
+  - path: /opt/traefik/traefik-internal-https.yml
+    mode: 644
+    contents:
+      local: configs/traefik/traefik-internal-https.yml
+
+  # SSL configuration files for internal HTTPS
+  - path: /opt/nextcloud/apache-ssl.conf
+    mode: 644
+    contents:
+      local: configs/apache-ssl.conf
+
+  - path: /opt/nextcloud/postgres-ssl.conf
+    mode: 644
+    contents:
+      local: configs/postgres-ssl.conf
+
+  - path: /opt/nextcloud/redis-ssl.conf
+    mode: 644
+    contents:
+      local: configs/redis-ssl.conf
+
+  # Production environment variables template
+  - path: /opt/nextcloud/.env.example
+    mode: 644
+    contents:
+      local: configs/.env.example
+
+  # Security and setup scripts
+  - path: /opt/bin/setup-production.sh
+    mode: 755
+    contents:
+      local: scripts/setup-production.sh
+
+  - path: /opt/bin/generate-secrets.sh
+    mode: 755
+    contents:
+      local: scripts/generate-secrets.sh
+
+  - path: /opt/bin/backup-nextcloud.sh
+    mode: 755
+    contents:
+      local: scripts/backup-nextcloud.sh
+
+  - path: /opt/bin/update-system.sh
+    mode: 755
+    contents:
+      local: scripts/update-system.sh
+
+  # Production utilities (enhanced versions of dev scripts)
+  - path: /opt/bin/nextcloud-occ.sh
+    mode: 755
+    contents:
+      local: scripts/nextcloud-occ.sh
+
+  - path: /opt/bin/nextcloud-logs.sh
+    mode: 755
+    contents:
+      local: scripts/nextcloud-logs-prod.sh
+
+  # App installation script (reuse from dev)
+  - path: /opt/bin/nextcloud-install-apps.sh
+    mode: 755
+    contents:
+      local: scripts/nextcloud-install-apps.sh
+
+  # Collabora setup scripts (reuse from dev)
+  - path: /opt/bin/nextcloud-collabora-setup.sh
+    mode: 755
+    contents:
+      local: scripts/nextcloud-collabora-setup.sh
+
+  # Internal HTTPS setup scripts
+  - path: /opt/bin/generate-internal-certs.sh
+    mode: 755
+    contents:
+      local: scripts/generate-internal-certs.sh
+
+  # Deployment helper script
+  - path: /opt/bin/deploy-production.sh
+    mode: 755
+    contents:
+      local: scripts/deploy-production.sh
+
+  # Internal HTTPS documentation
+  - path: /opt/nextcloud/INTERNAL-HTTPS.md
+    mode: 644
+    contents:
+      local: INTERNAL-HTTPS.md
+
+systemd:
+  units:
+  # Production Nextcloud service
+  - name: nextcloud-production.service
+    enabled: true
+    contents: |
+      [Unit]
+      Description=Nextcloud Production Environment
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      WorkingDirectory=/opt/nextcloud
+      ExecStartPre=/bin/bash /opt/bin/setup-production.sh
+      ExecStart=/usr/bin/docker-compose up -d
+      ExecStop=/usr/bin/docker-compose down
+      TimeoutStartSec=300
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # App installation service
+  - name: nextcloud-install-apps.service
+    contents: |
+      [Unit]
+      Description=Install Nextcloud Apps
+      After=nextcloud-production.service
+      Requires=nextcloud-production.service
+      ConditionFirstBoot=true
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      User=core
+      Group=core
+      WorkingDirectory=/opt/nextcloud
+      Environment=PATH=/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+      ExecStartPre=/bin/sleep 60
+      ExecStart=/opt/bin/nextcloud-install-apps.sh
+      TimeoutStartSec=600
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # Collabora setup service
+  - name: nextcloud-collabora-setup.service
+    contents: |
+      [Unit]
+      Description=Configure Collabora Online Integration
+      After=nextcloud-install-apps.service
+      Requires=nextcloud-install-apps.service
+      ConditionFirstBoot=true
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      User=core
+      Group=core
+      WorkingDirectory=/opt/nextcloud
+      Environment=PATH=/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+      ExecStartPre=/bin/sleep 10
+      ExecStart=/opt/bin/nextcloud-collabora-setup.sh configure
+      TimeoutStartSec=300
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # Automatic backups
+  - name: nextcloud-backup.service
+    contents: |
+      [Unit]
+      Description=Nextcloud Backup Service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/opt/bin/backup-nextcloud.sh
+      User=core
+
+  - name: nextcloud-backup.timer
+    enabled: true
+    contents: |
+      [Unit]
+      Description=Daily Nextcloud Backup
+
+      [Timer]
+      OnCalendar=daily
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+  # System updates
+  - name: system-update.service
+    contents: |
+      [Unit]
+      Description=System Security Updates
+
+      [Service]
+      Type=oneshot
+      ExecStart=/opt/bin/update-system.sh
+
+  - name: system-update.timer
+    enabled: true
+    contents: |
+      [Unit]
+      Description=Weekly System Updates
+
+      [Timer]
+      OnCalendar=weekly
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target

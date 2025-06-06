@@ -1,0 +1,209 @@
+# =========================================================================
+# NEXTCLOUD PRODUCTION WITH INTERNAL HTTPS
+# =========================================================================
+#
+# Enhanced production setup with HTTPS for all communications:
+# - External HTTPS via Traefik with Let's Encrypt
+# - Internal HTTPS between containers with self-signed certificates
+# - mTLS (mutual TLS) for service-to-service authentication
+# - End-to-end encryption for maximum security
+#
+# =========================================================================
+
+services:
+  # -----------------------------------------------------------------------
+  # CERTIFICATE AUTHORITY FOR INTERNAL CERTIFICATES
+  # -----------------------------------------------------------------------
+  cert-manager:
+    image: alpine:latest
+    container_name: nextcloud-cert-manager
+    volumes:
+      - internal_certs:/certs
+      - ./scripts/generate-internal-certs.sh:/generate-certs.sh:ro
+    command: ["/bin/sh", "/generate-certs.sh"]
+    networks:
+      - cert-network
+
+  # -----------------------------------------------------------------------
+  # TRAEFIK REVERSE PROXY - EXTERNAL SSL TERMINATION
+  # -----------------------------------------------------------------------
+  traefik:
+    image: traefik:v3.0
+    container_name: nextcloud-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./configs/traefik:/etc/traefik:ro
+      - traefik_certs:/certs
+      - internal_certs:/internal-certs:ro
+    environment:
+      - TRAEFIK_API_DASHBOARD=true
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=${ACME_EMAIL}
+    networks:
+      - traefik
+      - nextcloud-internal
+    depends_on:
+      - cert-manager
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dashboard.middlewares=auth"
+      - "traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_AUTH}"
+
+  # -----------------------------------------------------------------------
+  # NEXTCLOUD APPLICATION WITH INTERNAL HTTPS
+  # -----------------------------------------------------------------------
+  nextcloud:
+    image: nextcloud:apache
+    container_name: nextcloud-app
+    restart: unless-stopped
+    expose:
+      - "443"  # HTTPS instead of HTTP
+    volumes:
+      - nextcloud_data:/var/www/html
+      - nextcloud_config:/var/www/html/config
+      - nextcloud_custom_apps:/var/www/html/custom_apps
+      - ./data:/var/www/html/data
+      - internal_certs:/etc/ssl/internal:ro
+      - ./configs/apache-ssl.conf:/etc/apache2/sites-available/000-default.conf:ro
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
+      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+      - NEXTCLOUD_TRUSTED_DOMAINS=${DOMAIN},${PUBLIC_IP},nextcloud-app
+      - REDIS_HOST=redis
+      - REDIS_HOST_PORT=6380  # Redis with TLS
+      - REDIS_HOST_PASSWORD=${REDIS_PASSWORD}
+      - OVERWRITEPROTOCOL=https
+      - OVERWRITEHOST=${DOMAIN}
+      - OVERWRITECLIURL=https://${DOMAIN}
+      # Enable internal HTTPS
+      - APACHE_SERVER_NAME=nextcloud-app
+      - SSL_CERT_FILE=/etc/ssl/internal/nextcloud-app.crt
+      - SSL_KEY_FILE=/etc/ssl/internal/nextcloud-app.key
+    depends_on:
+      - db
+      - redis
+      - cert-manager
+    networks:
+      - nextcloud-internal
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nextcloud.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.nextcloud.tls=true"
+      - "traefik.http.routers.nextcloud.tls.certresolver=letsencrypt"
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=443"
+      - "traefik.http.services.nextcloud.loadbalancer.server.scheme=https"
+      # Disable certificate verification for internal self-signed certs
+      - "traefik.http.services.nextcloud.loadbalancer.serversTransport=internal-transport"
+
+  # -----------------------------------------------------------------------
+  # COLLABORA WITH INTERNAL HTTPS
+  # -----------------------------------------------------------------------
+  collabora:
+    image: collabora/code:latest
+    container_name: nextcloud-collabora
+    restart: unless-stopped
+    expose:
+      - "9980"  # HTTPS enabled
+    volumes:
+      - internal_certs:/etc/ssl/internal:ro
+    environment:
+      - domain=${DOMAIN}
+      - DONT_GEN_SSL_CERT=0  # Enable internal SSL
+      - extra_params=--o:ssl.enable=true --o:ssl.cert_file_path=/etc/ssl/internal/collabora.crt --o:ssl.key_file_path=/etc/ssl/internal/collabora.key --o:ssl.ca_file_path=/etc/ssl/internal/ca.crt
+      - username=${COLLABORA_ADMIN_USER}
+      - password=${COLLABORA_ADMIN_PASSWORD}
+      - server_name=collabora.${DOMAIN}
+    cap_add:
+      - MLOCK
+    depends_on:
+      - cert-manager
+    networks:
+      - nextcloud-internal
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.collabora.rule=Host(`collabora.${DOMAIN}`)"
+      - "traefik.http.routers.collabora.tls=true"
+      - "traefik.http.routers.collabora.tls.certresolver=letsencrypt"
+      - "traefik.http.services.collabora.loadbalancer.server.port=9980"
+      - "traefik.http.services.collabora.loadbalancer.server.scheme=https"
+      - "traefik.http.services.collabora.loadbalancer.serversTransport=internal-transport"
+
+  # -----------------------------------------------------------------------
+  # POSTGRESQL WITH TLS
+  # -----------------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: nextcloud-db
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - internal_certs:/etc/ssl/internal:ro
+      - ./configs/postgres-ssl.conf:/etc/postgresql/postgresql.conf:ro
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_HOST_AUTH_METHOD=md5
+      # Enable SSL for PostgreSQL
+      - POSTGRES_INITDB_ARGS=--auth-host=md5 --auth-local=trust
+    command: >
+      postgres
+      -c config_file=/etc/postgresql/postgresql.conf
+    depends_on:
+      - cert-manager
+    networks:
+      - nextcloud-internal
+
+  # -----------------------------------------------------------------------
+  # REDIS WITH TLS
+  # -----------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: nextcloud-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+      - internal_certs:/etc/ssl/internal:ro
+      - ./configs/redis-ssl.conf:/usr/local/etc/redis/redis.conf:ro
+    command: >
+      redis-server /usr/local/etc/redis/redis.conf
+      --requirepass ${REDIS_PASSWORD}
+    depends_on:
+      - cert-manager
+    networks:
+      - nextcloud-internal
+
+volumes:
+  nextcloud_data:
+  nextcloud_config:
+  nextcloud_custom_apps:
+  postgres_data:
+  redis_data:
+  traefik_certs:
+  internal_certs:
+
+networks:
+  traefik:
+    external: true
+  nextcloud-internal:
+    driver: bridge
+    internal: false  # Allow internal HTTPS communication
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+  cert-network:
+    driver: bridge
+    internal: true

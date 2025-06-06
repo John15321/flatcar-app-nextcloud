@@ -1,0 +1,29 @@
+# =========================================================================
+# TRAEFIK DYNAMIC CONFIGURATION - SECURITY POLICIES
+# =========================================================================
+
+tls:
+  options:
+    default:
+      sslStrategies:
+      - "tls.SniStrict"
+      minVersion: "VersionTLS12"
+      cipherSuites:
+      - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+      - "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
+      - "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+
+http:
+  middlewares:
+    security-headers:
+      headers:
+        customResponseHeaders:
+          X-Frame-Options: "DENY"
+          X-Content-Type-Options: "nosniff"
+          X-XSS-Protection: "1; mode=block"
+          Referrer-Policy: "strict-origin-when-cross-origin"
+          Content-Security-Policy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self'; object-src 'none'; child-src 'self'; frame-src 'self'; worker-src 'self' blob:; frame-ancestors 'self'; form-action 'self'; base-uri 'self';"
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true

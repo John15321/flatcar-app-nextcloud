@@ -188,30 +188,39 @@ files/
 
 **Note:** Collabora Online document editing requires production configuration for reliable operation.
 
-## Future: Production Collabora Setup
+## 🚀 Production Deployment Available
 
-When ready to enable full Collabora functionality, the following will be needed:
+This repository includes a **complete production-ready configuration** for full Nextcloud deployment with Collabora Online.
 
-### Production Requirements
-- **SSL/TLS certificates** - Proper HTTPS setup
-- **Domain name** - Real domain instead of localhost
-- **Reverse proxy** - Nginx or Traefik for proper routing
-- **Security headers** - HSTS, CSP, and frame-ancestors
-- **Network isolation** - Proper container networking
+### Production Features ✅
+- **Full document editing** - Word, Excel, PowerPoint with real-time collaboration
+- **Enterprise security** - SSL/TLS, security headers, firewall protection
+- **Multiple deployment options** - Azure cloud or standalone servers
+- **Automated SSL certificates** - Let's Encrypt integration
+- **Professional infrastructure** - Traefik reverse proxy, Redis, PostgreSQL
+- **Backup & monitoring** - Automated backups and comprehensive logging
 
-### Planned Production Features
-- Full document editing (Word, Excel, PowerPoint)
-- Real-time collaborative editing
-- Version history and conflict resolution
-- Mobile app support
-- Advanced security policies
+### Getting Started with Production
+```bash
+# Option 1: Azure deployment (recommended)
+cd production/azure && terraform apply
 
-### Migration Path
-The current setup provides the foundation:
-- All apps and infrastructure are pre-installed
-- WOPI configuration framework is in place
-- Troubleshooting tools are available
-- Easy transition to production deployment
+# Option 2: Standalone server
+make ignition-prod
+# Deploy to your server and run setup
+
+# Option 3: Full manual control
+cd production && butane nextcloud-production.yaml > prod.ign
+```
+
+📖 **Complete documentation:** See `production/README.md` for detailed deployment guides.
+
+### Migration from Development
+The production setup builds on this development environment:
+- ✅ All apps and infrastructure are compatible
+- ✅ Easy data migration path available  
+- ✅ Same app ecosystem and functionality
+- ✅ Comprehensive migration documentation
 
 ## Troubleshooting & Diagnostics
 
@@ -288,5 +297,40 @@ curl http://localhost:9980/hosting/discovery
 - **Collabora Admin Panel:** http://localhost:9980 (admin/admin123)
 - **Discovery Endpoint:** http://localhost:9980/hosting/discovery
 - **Integration Settings:** Nextcloud Admin → Office
+
+## 🚀 Production Deployment
+
+This development setup provides the foundation for production deployment. A complete **production-ready configuration** is available in the `/production` directory with:
+
+- **🔒 Security hardened** - Traefik reverse proxy, SSL/TLS, strong passwords
+- **☁️ Azure deployment** - Terraform/OpenTofu automation for cloud deployment  
+- **🖥️ Standalone server** - Installation scripts for any Linux server
+- **📋 Domain flexibility** - Works with custom domains or public IP
+- **🔧 Full automation** - Scripts for setup, backups, and maintenance
+
+### Quick Production Start
+
+**Option 1: Azure Deployment (Recommended)**
+```bash
+cd production/azure
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your settings
+
+# Using Terraform:
+terraform init && terraform plan && terraform apply
+
+# Or using OpenTofu:
+tofu init && tofu plan && tofu apply
+```
+
+**Option 2: Standalone Server**
+```bash
+make ignition-prod  # Generate production configuration
+# Deploy to your server and run setup scripts
+```
+
+**📖 Complete Documentation:** See `/production/README.md` for detailed deployment instructions, security features, and migration guides.
+
+---
 
 This setup provides a complete, production-like Nextcloud environment with essential apps pre-configured for immediate productivity and development work.

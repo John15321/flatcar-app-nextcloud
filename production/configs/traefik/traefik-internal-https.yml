@@ -1,0 +1,65 @@
+# =========================================================================
+# TRAEFIK CONFIGURATION WITH INTERNAL HTTPS SUPPORT
+# =========================================================================
+
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+api:
+  dashboard: true
+  insecure: false
+
+log:
+  level: INFO
+  format: json
+
+accessLog:
+  format: json
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entrypoint:
+          to: websecure
+          scheme: https
+          permanent: true
+
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        options: default
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: traefik
+
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      tlsChallenge: {}
+      email: "${ACME_EMAIL}"
+      storage: /certs/acme.json
+      caServer: https://acme-v02.api.letsencrypt.org/directory
+
+# Define transport for internal HTTPS communication
+serversTransports:
+  internal-transport:
+    serverName: ""
+    insecureSkipVerify: true # Accept self-signed internal certificates
+    rootCAs:
+    - /internal-certs/ca.crt
+
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addServicesLabels: true
